@@ -1,0 +1,39 @@
+[main]
+#identifier can be any string that helps you identifying your config file
+#this helps making sure the correct config is loaded. this identifier will be printed out when postomaat is reloading it's config
+#Default: dist
+identifier=dist
+
+#run as a daemon? (fork)
+#default: 1
+daemonize=0
+
+#run as user
+user=nobody
+#run as group
+group=nobody
+
+#what plugins do we load, comma separated
+plugins=
+
+#custom plugin dir
+plugindir=
+
+#bindaddress
+bindaddress=127.0.0.1
+
+#incoming port(s) (postfix connects here)
+incomingport=9998
+
+[performance]
+minthreads=5
+maxthreads=80
+
+
+[PluginAlias]
+#TODO
+
+
+
+
+
