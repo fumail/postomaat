@@ -1,0 +1,214 @@
+#!/usr/bin/env python
+
+#   Copyright 2012 Oli Schacher
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+#postomaat main startup file
+
+
+from postomaat import POSTOMAAT_VERSION
+
+import sys
+#sys.path.insert(0,'/home/gryphius/workspace/postomaat/src')
+
+import ConfigParser
+from postomaat.daemon import DaemonStuff
+import logging
+import logging.config
+import postomaat.funkyconsole
+
+from postomaat.core import MainController
+from postomaat.shared import get_config
+import signal
+import os
+import pwd
+import grp
+
+controller=None
+
+def reloadconfig():
+    """reload configuration file"""
+    logger=logging.getLogger('postomaat')
+    logger.info('Reloading configuration')
+    
+    newconfig=get_config()
+    
+    identifier="no identifier given"
+    if newconfig.has_option('main', 'identifier'):
+        identifier=newconfig.get('main','identifier')
+        
+    logger.info('Reload config complete. Current configuration:%s'%identifier)
+    controller.config=newconfig
+    
+    logger.info('Reloading plugins...')
+    ok=controller.load_plugins()
+    if ok:
+        logger.info('Plugin reload completed')
+    else:
+        logger.error('Plugin reload failed')
+    
+    controller.reload()
+
+def sighup(signum,frame):
+    """handle sighup to reload config"""
+    reloadconfig()
+
+lint=False
+debugmsg=False
+
+if '--lint' in sys.argv:
+    lint=True
+
+if '--test' in sys.argv:
+    debugmsg=True
+
+if '--help' in sys.argv:
+    print "Usage:"
+    print "postomaat --lint [--debug] to check config"
+    print "--test [--debug] attr=val attr=val ...   to test a message/debug postomaat"
+    print "--attrs to print a list of supported policy attributes"
+    sys.exit(0)
+
+
+defaultattrs={
+    #Postfix version 2.1 and later:
+    'request':'smtpd_access_policy',
+    'protocol_state':'RCPT',
+    'protocol_name':'SMTP',
+    'helo_name':'smtp.example.com',
+    'queue_id':'8045F2AB23',
+    'sender':'sender@example.com',
+    'recipient':'recipient@example.org',
+    'recipient_count':'1',
+    'client_address':'1.2.3.4',
+    'client_name':'host.example.net',
+    'reverse_client_name':'host.example.net',
+    'instance':'123.456.7',
+    #Postfix version 2.2 and later:
+    'sasl_method':'',
+    'sasl_username':'',
+    'sasl_sender':'',
+    'size':'12345',
+    'ccert_subject':'',
+    'ccert_issuer':'',
+    'ccert_fingerprint':'',
+    #Postfix version 2.3 and later:
+    'encryption_protocol':'TLSv1/SSLv3',
+    'encryption_cipher':'DHE-RSA-AES256-SHA',
+    'encryption_keysize':'256',
+    'etrn_domain':'',
+    #Postfix version 2.5 and later:
+    'stress':'',
+}
+
+if '--attrs' in sys.argv:
+    print "Supported attributes and their default:"
+    print "See http://www.postfix.org/SMTPD_POLICY_README.html#protocol for a full description"
+    print ""
+    for k,v in defaultattrs.iteritems():
+        print "%s : %s"%(k,v)
+    sys.exit(0)
+
+postomaatconfigfile='/etc/postomaat/postomaat.conf'
+postomaatloggingfile='/etc/postomaat/logging.conf'
+dconfdir='/etc/postomaat/conf.d'
+
+if not os.path.exists(postomaatconfigfile):
+    print """Configfile (%s) not found. Please create it by renaming the .dist file and modifying it to your needs"""%postomaatconfigfile
+    sys.exit(1)
+
+config=get_config(postomaatconfigfile,dconfdir)
+if config.getboolean('main', 'daemonize')and not lint and not debugmsg:
+    daemon=DaemonStuff('/var/run/postomaat.pid')
+    daemon.createDaemon()
+if lint or debugmsg:
+    level=logging.INFO
+    if '--debug' in sys.argv:
+        level=logging.DEBUG
+        
+    logging.basicConfig(level=level)
+    
+    fc=postomaat.funkyconsole.FunkyConsole()
+    print fc.strcolor("postomaat", "yellow"),
+    print fc.strcolor(POSTOMAAT_VERSION, "green")
+else:
+    logging.config.fileConfig(postomaatloggingfile)
+
+
+#drop privileges
+baselogger=logging.getLogger('')
+baselogger.info("postomaat Version %s starting up"%POSTOMAAT_VERSION)
+
+starting_uid = os.getuid()
+starting_gid = os.getgid()
+starting_uid_name = pwd.getpwuid(starting_uid).pw_name
+starting_gid_name = grp.getgrgid(starting_gid).gr_name
+
+try:
+    running_user=config.get('main','user')
+    running_group=config.get('main','group')
+except:
+    running_user='nobody'
+    running_group='nobody'
+
+try:
+    running_uid = pwd.getpwnam(running_user).pw_uid
+    running_gid = grp.getgrnam(running_group).gr_gid
+except:
+    baselogger.error('Can not drop privileges, user %s or group %s does not exist'%(running_user,running_group))
+    sys.exit(1)
+new_umask=077
+old_umask = os.umask(new_umask)
+baselogger.info('Dropping Privileges. Before: %s(%s)/%s(%s) Now: %s(%s)/%s(%s)'%(starting_uid_name,
+                                                                                                     starting_uid,
+                                                                                                     starting_gid_name,
+                                                                                                     starting_gid,
+                                                                                                     running_user,
+                                                                                                     running_uid,
+                                                                                                     running_group,
+                                                                                                     running_gid,
+                                                                                                     ))
+try:
+    os.setgid(running_gid)
+    os.setuid(running_uid)
+except OSError,e:
+    baselogger.error('Could not set effective uid/gid: %s'%e)
+    sys.exit(1)
+
+
+
+controller=MainController(config)
+if lint:
+    controller.lint()
+elif debugmsg:    
+    attrs=defaultattrs.copy()
+    
+    for arg in sys.argv:
+        if not '=' in arg:
+            continue
+        
+        key,value=arg.split('=',1)
+        
+        if key in defaultattrs:
+            attrs[key]=value
+        else:
+            print "Warning: %s irgnored - unsupported attribute"%key
+    print attrs
+    controller.test(attrs)
+else:
+    signal.signal(signal.SIGHUP, sighup)
+    controller.startup()
+
+
