@@ -204,7 +204,7 @@ elif debugmsg:
         if key in defaultattrs:
             attrs[key]=value
         else:
-            print "Warning: %s irgnored - unsupported attribute"%key
+            print "Warning: %s ignored - unsupported attribute"%key
     print attrs
     controller.test(attrs)
 else:
