@@ -1,3 +1,0 @@
-include conf/*.dist
-include scripts/init.d-centos/postomaat
-include conf/conf.d/*.dist
