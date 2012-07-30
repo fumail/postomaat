@@ -13,4 +13,4 @@
 # limitations under the License.
 #
 #
-POSTOMAAT_VERSION="0.6.0-svn01"
+POSTOMAAT_VERSION="0.6.0-svnimport"

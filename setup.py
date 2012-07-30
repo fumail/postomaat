@@ -2,7 +2,7 @@ from distutils.core import setup
 import glob
 import sys
 sys.path.insert(0,'src')
-
+import os
 
 #store old content of version file here
 #if we have git available, temporarily overwrite the file
@@ -47,3 +47,10 @@ setup(name = "postomaat",
                 ('/etc/postomaat/conf.d',glob.glob('conf/conf.d/*.dist')),
                 ]
 ) 
+
+
+#cleanup
+if OLD_VERSFILE_CONTENT!=None:
+    open(VERSFILE,'w').write(OLD_VERSFILE_CONTENT)
+    
+
