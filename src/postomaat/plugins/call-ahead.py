@@ -114,7 +114,6 @@ class AddressCheck(ScannerPlugin):
         
         #check blacklist
         relays=test.get_relays(domain,domainconfig)
-        #TODO: when do we test next relay?
         if relays==None or len(relays)==0:
             self.logger.error("No relay for domain %s found!"%domain)
             return DUNNO,None
@@ -312,11 +311,15 @@ class SMTPTest(object):
         elif tp=='static':
             return val
         elif tp=='txt':
-            self.logger.error('txt lookup for domain backend not implemented!')
-            return None
-        elif tp=='transport':
-            self.logger.error('transport lookup for domain backend not implemented!')
-            return None
+            try:
+                content=open(val).read()
+                lines=content.split('\n')
+                for line in lines:
+                    fdomain,ftarget=line.split()
+                    if domain.lower()==fdomain.lower():
+                        return [ftarget,]
+            except Exception,e:
+                self.logger.error("Txt lookup failed: %s"%str(e))
         else:
             self.logger.error('unknown relay lookup type: %s'%tp)
             return None 
