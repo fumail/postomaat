@@ -1,0 +1,5 @@
+[DBWriter]
+dbconnection=mysql://cleanmail3:cm3db@cm3db/cleanmail3?charset=utf8
+table=relay_maillog
+fields=from_address to_address from_domain to_domain size queue_id:queueid recipient_count:num_recipients client_address:ip client_name:revdns helo_name:helo sasl_sender:sasl_user sasl_method
+ 
