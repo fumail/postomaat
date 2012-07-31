@@ -2,8 +2,7 @@
 
 [AddressCheck]
 #dbconnection: sqlalchemy connection string
-#dbconnection=mysql://root@localhost/callahead?charset=utf8
-dbconnection=sqlite://
+dbconnection=mysql://root@localhost/callahead?charset=utf8
 
 #DEBUG SETTINGS
 #set this to true to disable the blacklisting of servers that don't support recipient verification
