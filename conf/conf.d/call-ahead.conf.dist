@@ -49,23 +49,3 @@ server=mx:${domain}
 #${bounce} : Use the null sender (bounce address). This should work as well, but can lead to problems if the target server does not like multiple recipients from the null-sender (eg. postfix with restriction reject_multi_recipient_bounce)
 #${originalfrom} : Use the original from address. Dangerous as this can lead to wrong negative cache entries if a sender address is blacklisted on the target server. 
 sender=${bounce}
-
-## Problem actions
-#all those values can be DUNNO, DEFER or REJECT
-# THESE ARE NOT YET IMPLEMENTED. CURRENTLY, MESSAGES WILL BE ACCEPTED AND THE SERVER PUT ON THE CALL-AHEAD BLACKLIST
-
-#action if we don't find a valid target relay
-#NOT YET IMPLEMENTED
-no_valid_server_fail=DUNNO
-
-#acction if we cannot connect to the target server
-#NOT YET IMPLEMENTED
-connect_fail=DUNNO
-
-#action if the target server does not accept our HELO
-#NOT YET IMPLEMENTED
-helo_fail=DUNNO
-
-#action if the target server does not accept our from address
-#NOT YET IMPLEMENTED
-mail_from_fail=DUNNO
