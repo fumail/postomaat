@@ -1,0 +1,72 @@
+
+
+[AddressCheck]
+#dbconnection: sqlalchemy connection string
+#dbconnection=mysql://root@localhost/callahead?charset=utf8
+dbconnection=sqlite://
+
+#DEBUG SETTINGS
+#set this to true to disable the blacklisting of servers that don't support recipient verification
+always_assume_rec_verification_support=False
+
+#Set this to always return 'DUNNO' but still perform the recipient check and fill the cache (learning mode without rejects)
+always_accept=False
+
+#how long should expired positive cache data be kept in the table history [days]
+keep_positive_history_time = 30
+
+#how long should expired negative cache data be kept in the table history [days]
+keep_negative_history_time = 1
+
+[ca_default]
+#these are the default options. you can override every option for a domain by creating a new config section
+#[ca_example.com]
+
+
+#enable recipient verification
+enabled = 1
+
+#socket timeout
+timeout = 30
+
+#how long should we blacklist a server if it doesn't support recipient verification [seconds]
+test_server_interval = 3600
+
+#how long should we cache existing addresses [seconds]
+positive_cache_time = 604800
+
+#how long should we keep negative cache entries [seconds]
+negative_cache_time =  14400
+
+#how should we retrieve the next hop?
+#sql:<statement> ( ${domain} will be replaced with the actual domain name)
+#static:<hostname>
+#txt:<filename> (get from simple textfile in the format <domain> <transport>)
+#mx:${domain} (mx lookup)
+server=mx:${domain}
+
+#sender address we should use for recipient verification. possibilities:
+#static address, eg. verification@yourdomain.com : probably the best option, but make sure the address exists in case the target does sender-callbacks
+#${bounce} : Use the null sender (bounce address). This should work as well, but can lead to problems if the target server does not like multiple recipients from the null-sender (eg. postfix with restriction reject_multi_recipient_bounce)
+#${originalfrom} : Use the original from address. Dangerous as this can lead to wrong negative cache entries if a sender address is blacklisted on the target server. 
+sender=${bounce}
+
+## Problem actions
+#all those values can be DUNNO, DEFER or REJECT
+# THESE ARE NOT YET IMPLEMENTED. CURRENTLY, MESSAGES WILL BE ACCEPTED AND THE SERVER PUT ON THE CALL-AHEAD BLACKLIST
+
+#action if we don't find a valid target relay
+#NOT YET IMPLEMENTED
+no_valid_server_fail=DUNNO
+
+#acction if we cannot connect to the target server
+#NOT YET IMPLEMENTED
+connect_fail=DUNNO
+
+#action if the target server does not accept our HELO
+#NOT YET IMPLEMENTED
+helo_fail=DUNNO
+
+#action if the target server does not accept our from address
+#NOT YET IMPLEMENTED
+mail_from_fail=DUNNO

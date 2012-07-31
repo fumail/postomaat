@@ -1,6 +1,10 @@
 #!/usr/bin/python
 import sys
 
+#TODO: full rewrite to sqlalchemy
+#TODO: propagate tables
+
+
 #in case the tool is not installed system wide (development...)
 if __name__ =='__main__':
     sys.path.append('../../')
@@ -13,6 +17,32 @@ import smtplib
 from string import Template
 import logging
 import datetime
+
+HAVE_DNSPYTHON=False
+try:
+    import DNS
+    HAVE_DNSPYTHON=True
+    DNS.DiscoverNameServers()
+    
+except ImportError:
+    pass
+
+
+def mxlookup(domain):
+    if HAVE_DNSPYTHON:
+        mxrecs=[]
+        mxrequest = DNS.mxlookup(domain)
+        for dataset in mxrequest:
+            if type(dataset) == tuple:
+                mxrecs.append(dataset)
+                
+        mxrecs.sort() #automatically sorts by priority
+        return [x[1] for x in mxrecs]
+    
+    #TODO: other dns libraries?
+    
+    return None
+
 
 class AddressCheck(ScannerPlugin):
                                          
@@ -83,10 +113,14 @@ class AddressCheck(ScannerPlugin):
             return DUNNO,None
         
         #check blacklist
-        relay=test.get_relay(domain,domainconfig)
-        if relay==None:
+        relays=test.get_relays(domain,domainconfig)
+        #TODO: when do we test next relay?
+        if relays==None or len(relays)==0:
             self.logger.error("No relay for domain %s found!"%domain)
             return DUNNO,None
+        
+        relay=relays[0]
+        self.logger.debug("Testing relay %s for domain %s"%(relay,domain))
         if self.cache.is_blacklisted(domain, relay):
             self.logger.info('%s: server %s for domain %s is blacklisted for call-aheads, skipping'%(address,relay,domain))
             return DUNNO,None
@@ -237,7 +271,7 @@ class SMTPTest(object):
         self.logger=logging.getLogger('postomaat.smtptest')
     
     def maketestaddress(self,domain):
-        """Return a static test address that probably doesn't exists. It is NOT randomly generated, so we can check if the incoming connection does not produce a call-ahead loop""" 
+        """Return a static test address that probably doesn't exist. It is NOT randomly generated, so we can check if the incoming connection does not produce a call-ahead loop""" 
         return "rbxzg133-7tst@%s"%domain
     
     
@@ -246,8 +280,10 @@ class SMTPTest(object):
         defval=self.config.get('ca_default',key)
         
         theval=defval
-        if domainconfig==None:
-            configbackend=MySQLConfigBackend(self.config)
+        if domainconfig==None: #nothing from sql
+            
+            #check config file overrides
+            configbackend=ConfigFileBackend(self.config)
             
             #ask the config backend if we have a special server config
             backendoverride=configbackend.get_domain_config_value(domain, key)
@@ -261,8 +297,8 @@ class SMTPTest(object):
         
         return theval
     
-    def get_relay(self,domain,domainconfig=None):
-        """Determine the relay for a domain"""
+    def get_relays(self,domain,domainconfig=None):
+        """Determine the relay(s) for a domain"""
         serverconfig=self.get_domain_config(domain, 'server', domainconfig,{'domain':domain})
 
         (tp,val)=serverconfig.split(':',1)
@@ -270,10 +306,9 @@ class SMTPTest(object):
         if tp=='sql':
             conn=get_connection(self.config.get('AddressCheck','dbconnection'))
             ret=conn.execute(val)
-            return ret.scalar()
+            return [result for result in ret]
         elif tp=='mx':
-            self.logger.error('MX lookup for domain backend not implemented!')
-            return None
+            return mxlookup(val)
         elif tp=='static':
             return val
         elif tp=='txt':
@@ -564,7 +599,6 @@ class ConfigBackendInterface(object):
 class MySQLConfigBackend(ConfigBackendInterface):
     def __init__(self,config):
         ConfigBackendInterface.__init__(self, config)
-        #TODO implement
     
     def get_domain_config_value(self,domain,key):
         retval=None
@@ -625,10 +659,10 @@ class SMTPTestCommandLineInterface(object):
         from postomaat.shared import get_config
         config=get_config('../../../conf/postomaat.conf.dist', '../../../conf/conf.d')
         config.read('../../../conf/conf.d/call-ahead.conf.dist')
-        mysqlcache=MySQLCache(config)
+        sqlcache=MySQLCache(config)
         plugin=AddressCheck(config)
         print "cli : Command line interface class"
-        print "mysqlcache : Mysql cache backend"
+        print "sqlcache : SQL cache backend"
         print "plugin: AddressCheck Plugin"
         terp=code.InteractiveConsole(locals())
         terp.interact("")
@@ -713,38 +747,38 @@ class SMTPTestCommandLineInterface(object):
             print "No cache entry for %s"%address
         
         test=SMTPTest(config)
-        relay=test.get_relay(domain,domainconfig)
-        print "Relay for domain %s is %s"%(domain,relay)
-        if relay==None:
-            print "No relay for domain %s found!"%domain
-            sys.exit(1)
-        
-        print "Checking local server blacklist..."
-        if cache.is_blacklisted(domain, relay):
-            print "Server is currently blacklisted for call-aheads"
-        else:
-            print "Server not blacklisted for call-aheads"
-        
-        print "Checking if server supports verification...."
-        
-        sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':''})
-        testaddress=test.maketestaddress(domain)
-        result=test.smtptest(relay,[address,testaddress],mailfrom=sender)
-        if result.state!=SMTPTestResult.TEST_OK:
-            print "There was a problem testing this server:"
-            print result
-            sys.exit(1)
+        relays=test.get_relays(domain,domainconfig)
+        if relays==None:
+                print "No relay for domain %s found!"%domain
+                sys.exit(1)
+        print "Relays for domain %s are %s"%(domain,relays)
+        for relay in relays:
+            print "Testing relay %s"%relay
+            if cache.is_blacklisted(domain, relay):
+                print "%s is currently blacklisted for call-aheads"%relay
+            else:
+                print "%s not blacklisted for call-aheads"%relay
             
-        
-        addrstate,code,msg=result.rcptoreplies[testaddress]
-        if addrstate==SMTPTestResult.ADDRESS_OK:
-            print "Server accepts any recipient"
-        elif addrstate==SMTPTestResult.ADDRESS_TEMPFAIL:
-            print "Temporary problem / greylisting detected"
-        elif addrstate==SMTPTestResult.ADDRESS_DOES_NOT_EXIST:
-            print "Server supports recipient verification"
-        
-        print result
+            print "Checking if server supports verification...."
+            
+            sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':''})
+            testaddress=test.maketestaddress(domain)
+            result=test.smtptest(relay,[address,testaddress],mailfrom=sender)
+            if result.state!=SMTPTestResult.TEST_OK:
+                print "There was a problem testing this server:"
+                print result
+                continue
+                
+            
+            addrstate,code,msg=result.rcptoreplies[testaddress]
+            if addrstate==SMTPTestResult.ADDRESS_OK:
+                print "Server accepts any recipient"
+            elif addrstate==SMTPTestResult.ADDRESS_TEMPFAIL:
+                print "Temporary problem / greylisting detected"
+            elif addrstate==SMTPTestResult.ADDRESS_DOES_NOT_EXIST:
+                print "Server supports recipient verification"
+            
+            print result
     
     def wipe_address(self,*args):
         if len(args)!=1:
@@ -840,13 +874,13 @@ class SMTPTestCommandLineInterface(object):
         cache=MySQLCache(config)
 
         test=SMTPTest(config)
-        relay=test.get_relay(domain,domainconfig)
-        print "Relay for domain %s is %s"%(domain,relay)
-        if relay==None:
+        relays=test.get_relays(domain,domainconfig)
+        if relays==None:
             print "No relay for domain %s found!"%domain
             sys.exit(1)
+        print "Relays for domain %s are %s"%(domain,relays)
         
-        
+        relay=relays[0]
         sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':''})
         testaddress=test.maketestaddress(domain)
         result=test.smtptest(relay,[address,testaddress],mailfrom=sender)
@@ -857,11 +891,9 @@ class SMTPTestCommandLineInterface(object):
             print result
             print "putting server on blacklist"
             cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
-            sys.exit(1)
-            
-            
-        
-        
+            return DUNNO,None
+    
+    
         addrstate,code,msg=result.rcptoreplies[testaddress]
         recverificationsupport=None
         if addrstate==SMTPTestResult.ADDRESS_OK:
