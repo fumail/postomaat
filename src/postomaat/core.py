@@ -168,7 +168,7 @@ class MainController(object):
             'incomingport':{
               'section':'main',
               'description':"incoming port",
-              'default':"10025",
+              'default':"9998",
             },
         
             #performance section
