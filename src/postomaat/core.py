@@ -181,7 +181,18 @@ class MainController(object):
                 'default':"40",
                 'section':'performance',
                 'description':'maximum scanner threads',
-            },         
+            },
+                           
+            #  plugin alias
+             'call-ahead':{
+                'default':"postomaat.plugins.call-ahead.AddressCheck",
+                'section':'PluginAlias',
+            },
+                           
+             'dbwriter':{
+                'default':"postomaat.plugins.dbwriter.DBWriter",
+                'section':'PluginAlias',
+            },       
         }
         self.config=config
         self.servers=[]
