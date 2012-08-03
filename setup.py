@@ -40,7 +40,7 @@ setup(name = "postomaat",
     author_email = "oli@wgwh.ch",
     package_dir={'':'src'},
     packages = ['postomaat','postomaat.plugins'],
-    scripts = ["src/startscript/postomaat"],
+    scripts = ["src/startscript/postomaat","src/tools/postomaat_conf"],
     long_description = """0""" ,
     data_files=[
                 ('/etc/postomaat',glob.glob('conf/*.dist')),

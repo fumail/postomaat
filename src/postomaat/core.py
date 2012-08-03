@@ -117,16 +117,72 @@ class MainController(object):
     config=None
     
     def __init__(self,config):
-        self.requiredvars=(('performance','minthreads'),
-                           ('performance','maxthreads'),
-                           ('main','user'),
-                           ('main','group'),
-                           ('main','daemonize'),
-                           ('main','plugins'),
-                           ('main','plugindir'),
-                           ('main','incomingport'),
-                           ('main','bindaddress'),
-                           )
+        
+        self.requiredvars={
+            #main section
+            'identifier':{
+              'section':'main',
+              'description':"""identifier can be any string that helps you identifying your config file\nthis helps making sure the correct config is loaded. this identifier will be printed out when postomaat is reloading its config""",
+              'default':'dist',
+            },
+                           
+            'daemonize':{
+              'section':'main',
+              'description':"run as a daemon? (fork)",
+              'default':"1",
+              #todo: validator...?
+            },
+                           
+            'user':{
+              'section':'main',
+              'description':"run as user",
+              'default':"nobody",
+              #todo: validator, check user...?
+            },  
+                           
+            'group':{
+              'section':'main',
+              'description':"run as group",
+              'default':"nobody",
+              #todo: validator, check user...?
+            },   
+                           
+           'plugindir':{
+              'section':'main',
+              'description':"where should postomaat search for additional plugins",
+              'default':"",
+            },
+                           
+            'plugins':{
+              'section':'main',
+              'description':"what plugins do we load, comma separated",
+              'default':"",
+            },
+
+            'bindaddress':{
+              'section':'main',
+              'description':"address postomaat should listen on. usually 127.0.0.1 so connections are accepted from local host only",
+              'default':"127.0.0.1",
+            },
+                                        
+            'incomingport':{
+              'section':'main',
+              'description':"incoming port",
+              'default':"10025",
+            },
+        
+            #performance section
+            'minthreads':{
+                'default':"2",
+                'section':'performance',
+                'description':'minimum scanner threads',
+            },
+            'maxthreads':{
+                'default':"40",
+                'section':'performance',
+                'description':'maximum scanner threads',
+            },         
+        }
         self.config=config
         self.servers=[]
         self.logger=self._logger()
@@ -284,12 +340,20 @@ class MainController(object):
         
     
     def checkConfig(self):
-        """Check if all requred options are in the config file"""
+        """Check if all requred options are in the config file
+        Fill missing values with defaults if possible
+        """
         allOK=True
-        for configvar in self.requiredvars:
-            (section,config)=configvar
+        for config,infodic in self.requiredvars.iteritems():
+            section=infodic['section']
             try:
                 var=self.config.get(section,config)
+    
+                if 'validator' in infodic:
+                    if not infodic["validator"](var):
+                        print "Validation failed for [%s] :: %s"%(section,config)
+                        allOK=False
+                
             except ConfigParser.NoSectionError:
                 print "Missing configuration section [%s] :: %s"%(section,config)
                 allOK=False
@@ -380,6 +444,36 @@ class MainController(object):
             else:
                 raise Exception,'Cannot set Config Section %s : Plugin %s does not support config override'%(configsection,mod)
         return plugininstance
+    
+    def propagate_defaults(self,requiredvars,config,defaultsection=None):
+        """propagate defaults from requiredvars if they are missing in config"""
+        for option,infodic in requiredvars.iteritems():
+            if 'section' in infodic:
+                section=infodic['section']
+            else:
+                section=defaultsection
+                
+            default=infodic['default']
+            
+            if not config.has_section(section):
+                config.add_section(section)
+                
+            if not config.has_option(section,option):
+                config.set(section,option,default)
+    
+    def propagate_core_defaults(self):
+        """check for missing core config options and try to fill them with defaults
+        must be called before we can do plugin loading stuff
+        """
+        self.propagate_defaults(self.requiredvars, self.config,'main')
+    
+    def propagate_plugin_defaults(self):
+        """propagate defaults from loaded lugins"""
+        for plug in self.plugins:
+            if hasattr(plug,'requiredvars'):
+                requiredvars=getattr(plug,'requiredvars')
+                if type(requiredvars)==dict:
+                        self.propagate_defaults(requiredvars, self.config, plug.section)
             
 class PolicyServer(object):    
     def __init__(self, controller,port=10025,address="127.0.0.1",plugins=None):

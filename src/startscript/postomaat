@@ -15,22 +15,16 @@
 # limitations under the License.
 #
 #
-#postomaat main startup file
-
-
-from postomaat import POSTOMAAT_VERSION
-
-import sys
-#sys.path.insert(0,'/home/gryphius/workspace/postomaat/src')
+# main startup file
 
 import ConfigParser
+from postomaat import POSTOMAAT_VERSION
 from postomaat.daemon import DaemonStuff
 import logging
 import logging.config
 import postomaat.funkyconsole
-
+import sys
 from postomaat.core import MainController
-from postomaat.shared import get_config
 import signal
 import os
 import pwd
@@ -38,19 +32,34 @@ import grp
 
 controller=None
 
+theconfigfile='/etc/postomaat/postomaat.conf'
+dconfdir='/etc/postomaat/conf.d'
+theloggingfile='/etc/postomaat/logging.conf'
+
+
+
 def reloadconfig():
     """reload configuration file"""
     logger=logging.getLogger('postomaat')
     logger.info('Reloading configuration')
-    
-    newconfig=get_config()
+    newconfig=ConfigParser.ConfigParser()
+    newconfig.readfp(open(theconfigfile))
     
     identifier="no identifier given"
     if newconfig.has_option('main', 'identifier'):
         identifier=newconfig.get('main','identifier')
-        
+    
+    #load conf.d
+    if os.path.isdir(dconfdir):
+        filelist=os.listdir(dconfdir)
+        configfiles=[dconfdir+'/'+c for c in filelist if c.endswith('.conf')]
+        logger.debug('Conffiles in %s: %s'%(dconfdir,configfiles))
+        readfiles=newconfig.read(configfiles)
+        logger.debug('Read additional files: %s'%(readfiles))
+
     logger.info('Reload config complete. Current configuration:%s'%identifier)
     controller.config=newconfig
+    controller.propagate_core_defaults()
     
     logger.info('Reloading plugins...')
     ok=controller.load_plugins()
@@ -58,6 +67,8 @@ def reloadconfig():
         logger.info('Plugin reload completed')
     else:
         logger.error('Plugin reload failed')
+    
+    controller.propagate_plugin_defaults()
     
     controller.reload()
 
@@ -68,7 +79,7 @@ def sighup(signum,frame):
 lint=False
 debugmsg=False
 
-if '--lint' in sys.argv:
+if "--lint" in sys.argv:
     lint=True
 
 if '--test' in sys.argv:
@@ -81,6 +92,9 @@ if '--help' in sys.argv:
     print "--attrs to print a list of supported policy attributes"
     sys.exit(0)
 
+if "--version" in sys.argv:
+    print "Postomaat Version %s"%POSTOMAAT_VERSION
+    sys.exit(0) 
 
 defaultattrs={
     #Postfix version 2.1 and later:
@@ -121,18 +135,28 @@ if '--attrs' in sys.argv:
         print "%s : %s"%(k,v)
     sys.exit(0)
 
-postomaatconfigfile='/etc/postomaat/postomaat.conf'
-postomaatloggingfile='/etc/postomaat/logging.conf'
-dconfdir='/etc/postomaat/conf.d'
 
-if not os.path.exists(postomaatconfigfile):
-    print """Configfile (%s) not found. Please create it by renaming the .dist file and modifying it to your needs"""%postomaatconfigfile
+config=ConfigParser.ConfigParser()
+if not os.path.exists(theconfigfile):
+    print """Configfile (%s) not found. Please create it by renaming the .dist file and modifying it to your needs"""%theconfigfile
     sys.exit(1)
+readconfig=config.readfp(open(theconfigfile))
+#load conf.d
+if os.path.isdir(dconfdir):
+    filelist=os.listdir(dconfdir)
+    configfiles=[dconfdir+'/'+c for c in filelist if c.endswith('.conf')]
+    readfiles=config.read(configfiles)
 
-config=get_config(postomaatconfigfile,dconfdir)
-if config.getboolean('main', 'daemonize')and not lint and not debugmsg:
-    daemon=DaemonStuff('/var/run/postomaat.pid')
-    daemon.createDaemon()
+
+daemon=DaemonStuff('/var/run/postomaat.pid')
+#we could have an empty config file
+if  not lint: #no daemon for lint
+    if config.has_option('main', 'daemonize'):
+        if config.getboolean('main', 'daemonize'):
+            daemon.createDaemon()
+    else: #option not specified -> default to run daemon
+        daemon.createDaemon()
+        
 if lint or debugmsg:
     level=logging.INFO
     if '--debug' in sys.argv:
@@ -144,17 +168,12 @@ if lint or debugmsg:
     print fc.strcolor("postomaat", "yellow"),
     print fc.strcolor(POSTOMAAT_VERSION, "green")
 else:
-    logging.config.fileConfig(postomaatloggingfile)
+    logging.config.fileConfig(theloggingfile)
 
-
-#drop privileges
+controller=MainController(config)
+controller.propagate_core_defaults()
 baselogger=logging.getLogger('')
 baselogger.info("postomaat Version %s starting up"%POSTOMAAT_VERSION)
-
-starting_uid = os.getuid()
-starting_gid = os.getgid()
-starting_uid_name = pwd.getpwuid(starting_uid).pw_name
-starting_gid_name = grp.getgrgid(starting_gid).gr_name
 
 try:
     running_user=config.get('main','user')
@@ -162,34 +181,11 @@ try:
 except:
     running_user='nobody'
     running_group='nobody'
-
-try:
-    running_uid = pwd.getpwnam(running_user).pw_uid
-    running_gid = grp.getgrnam(running_group).gr_gid
-except:
-    baselogger.error('Can not drop privileges, user %s or group %s does not exist'%(running_user,running_group))
-    sys.exit(1)
-new_umask=077
-old_umask = os.umask(new_umask)
-baselogger.info('Dropping Privileges. Before: %s(%s)/%s(%s) Now: %s(%s)/%s(%s)'%(starting_uid_name,
-                                                                                                     starting_uid,
-                                                                                                     starting_gid_name,
-                                                                                                     starting_gid,
-                                                                                                     running_user,
-                                                                                                     running_uid,
-                                                                                                     running_group,
-                                                                                                     running_gid,
-                                                                                                     ))
-try:
-    os.setgid(running_gid)
-    os.setuid(running_uid)
-except OSError,e:
-    baselogger.error('Could not set effective uid/gid: %s'%e)
-    sys.exit(1)
+daemon.drop_privs(running_user,running_group)
 
 
 
-controller=MainController(config)
+
 if lint:
     controller.lint()
 elif debugmsg:    
