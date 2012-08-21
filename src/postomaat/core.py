@@ -94,8 +94,17 @@ class SessionHandler(object):
         for plugin in pluglist:
             try:
                 self.logger.debug('Running plugin %s'%plugin)
-                result,arg=plugin.examine(suspect)
                 
+                ans = plugin.examine(suspect)
+                arg=None
+                if type(ans) is tuple:
+                    result,arg=ans
+                else:
+                    result=ans
+                
+                if result==None:
+                    result=DUNNO
+                    
                 self.action=result
                 self.arg=arg
                 suspect.tags['decisions'].append((str(plugin),result))
