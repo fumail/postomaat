@@ -305,7 +305,7 @@ class SMTPTest(object):
         if tp=='sql':
             conn=get_connection(self.config.get('AddressCheck','dbconnection'))
             ret=conn.execute(val)
-            return [result for result in ret]
+            return [result[0] for result in ret]
         elif tp=='mx':
             return mxlookup(val)
         elif tp=='static':
