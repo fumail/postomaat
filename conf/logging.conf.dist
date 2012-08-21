@@ -43,6 +43,8 @@ formatter=logfileformatter
 
 [formatter_syslogformatter]
 format=postomaat[%(process)d]: %(message)s
+#if you run postomaat on python2.6 add this:
+#class=postomaat.workaround.BOMLessFormatter
 
 [formatter_logfileformatter]
 format=%(asctime)s %(name)-12s: %(levelname)s %(message)s
