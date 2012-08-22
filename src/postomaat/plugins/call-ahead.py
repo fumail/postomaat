@@ -309,7 +309,7 @@ class SMTPTest(object):
         elif tp=='mx':
             return mxlookup(val)
         elif tp=='static':
-            return val
+            return [val,]
         elif tp=='txt':
             try:
                 content=open(val).read()
