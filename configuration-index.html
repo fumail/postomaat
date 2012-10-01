@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuration &mdash; postomaat 1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="postomaat 1 documentation" href="index.html" />
+    <link rel="next" title="Operation" href="operation-index.html" />
+    <link rel="prev" title="Installation" href="installation-index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="operation-index.html" title="Operation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="installation-index.html" title="Installation"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">postomaat 1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h1>
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+<div class="section" id="basic-configuration">
+<h2>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="postomaat">
+<h3>Postomaat<a class="headerlink" href="#postomaat" title="Permalink to this headline">¶</a></h3>
+<p>First of all, rename remove the .dist ending from all files in <tt class="docutils literal"><span class="pre">/etc/postomaat</span></tt>, so you have a basic default configuration.</p>
+<p>edit <tt class="docutils literal"><span class="pre">/etc/postomaat/postomaat.conf</span></tt> and change parameters if you like</p>
+<p>Then check if postomaat is happy with your configuration:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">postomaat</span> <span class="o">--</span><span class="n">lint</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="postfix">
+<h3>Postfix<a class="headerlink" href="#postfix" title="Permalink to this headline">¶</a></h3>
+<p>Once postomaat is up and running, we need to tell Postfix to use it as an policy access daemon</p>
+<p>Detailed documentation is available on the <a class="reference external" href="http://www.postfix.org/SMTPD_POLICY_README.html">postfix</a> website.</p>
+<p>here is a quick example.</p>
+<p>in <tt class="docutils literal"><span class="pre">main.cf</span></tt> add</p>
+<div class="highlight-python"><pre>smtpd_recipient_restrictions = permit_mynetworks,
+                       reject_unauth_pipelining,
+                       reject_unauth_destination,
+                       check_policy_service inet:127.0.0.1:9998</pre>
+</div>
+<p>run <tt class="docutils literal"><span class="pre">postfix</span> <span class="pre">reload</span></tt> and check your maillog for errors. from now on, messages should be filtered by postomaat!</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Configuration</a><ul>
+<li><a class="reference internal" href="#basic-configuration">Basic Configuration</a><ul>
+<li><a class="reference internal" href="#postomaat">Postomaat</a></li>
+<li><a class="reference internal" href="#postfix">Postfix</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="installation-index.html"
+                        title="previous chapter">Installation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="operation-index.html"
+                        title="next chapter">Operation</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/configuration-index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="operation-index.html" title="Operation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="installation-index.html" title="Installation"
+             >previous</a> |</li>
+        <li><a href="index.html">postomaat 1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, gryphius.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

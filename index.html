@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Welcome to postomaat’s documentation! &mdash; postomaat 1 documentation</title>
+    <title>Postomaat Postfix Policy Daemon &mdash; postomaat 1 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -25,7 +25,8 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="postomaat 1 documentation" href="#" /> 
+    <link rel="top" title="postomaat 1 documentation" href="#" />
+    <link rel="next" title="Overview" href="overview-index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -34,6 +35,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="overview-index.html" title="Overview"
+             accesskey="N">next</a> |</li>
         <li><a href="#">postomaat 1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
@@ -43,11 +47,66 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="welcome-to-postomaat-s-documentation">
-<h1>Welcome to postomaat&#8217;s documentation!<a class="headerlink" href="#welcome-to-postomaat-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="postomaat-postfix-policy-daemon">
+<h1>Postomaat Postfix Policy Daemon<a class="headerlink" href="#postomaat-postfix-policy-daemon" title="Permalink to this headline">¶</a></h1>
+<p>Warning: this documentation is far from finsihed, and mostly copied from fuglu (postomaat shares a lot of code with fuglu).</p>
 <p>Contents:</p>
 <div class="toctree-wrapper compound">
-<ul class="simple">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview-index.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="overview-index.html#features">Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation-index.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation-index.html#prerequisites">Prerequisites</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation-index.html#required">required</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation-index.html#recommended">recommended</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation-index.html#getting-and-installing-postomaat">Getting and installing Postomaat</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation-index.html#cloning-source-from-github">cloning source from github</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation-index.html#latest-source-package-from-github">latest source package from github</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation-index.html#latest-released-package-from-pypi">latest released package from pypi</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration-index.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration-index.html#basic-configuration">Basic Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration-index.html#postomaat">Postomaat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration-index.html#postfix">Postfix</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operation-index.html">Operation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operation-index.html#monitoring">Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operation-index.html#troubleshooting-debugging">Troubleshooting &amp; Debugging</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="operation-index.html#postomaat-doesn-t-even-start">Postomaat doesn&#8217;t even start</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="plugins-index.html">Plugins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="plugins-index.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="plugins-index.html#types-of-responses">Types of responses</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="plugins-index.html#plugin-configuration">Plugin configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins-index.html#plugins-included-in-postomaat">Plugins included in postomaat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins-index.html#writing-your-own-plugins">Writing your own plugins</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="plugins-index.html#common-tasks-api-faq">Common Tasks (&#8220;API&#8221; FAQ)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plugins-index.html#debugging">Debugging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plugins-index.html#deploying-plugins">Deploying Plugins</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="help-index.html">Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="help-index.html#faq">FAQ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="help-index.html#mailing-list">Mailing list</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -68,12 +127,15 @@
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Welcome to postomaat&#8217;s documentation!</a><ul>
+<li><a class="reference internal" href="#">Postomaat Postfix Policy Daemon</a><ul>
 </ul>
 </li>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 </ul>
 
+  <h4>Next topic</h4>
+  <p class="topless"><a href="overview-index.html"
+                        title="next chapter">Overview</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/index.txt"
@@ -102,6 +164,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="overview-index.html" title="Overview"
+             >next</a> |</li>
         <li><a href="#">postomaat 1 documentation</a> &raquo;</li> 
       </ul>
     </div>

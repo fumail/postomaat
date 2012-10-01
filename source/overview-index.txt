@@ -1,0 +1,28 @@
+Overview
+========
+
+.. toctree::
+   :maxdepth: 2
+
+
+Postomaat is a postfix policy daemon written in python. It allows to accept/reject/defer/... messages using the smtp policy access delegation protocol described in http://www.postfix.org/SMTPD_POLICY_README.html
+
+
+Postomaat's simple plugin architecture allows extending functionality easily (basic python skills required).
+
+
+--------
+Features
+--------
+
+TODO
+
+
+
+
+
+
+
+
+
+

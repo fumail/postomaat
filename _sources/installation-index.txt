@@ -1,0 +1,50 @@
+Installation
+============
+
+.. toctree::
+   :maxdepth: 2
+
+-------------
+Prerequisites
+-------------
+
+required
+--------
+
+ * **python** (>=2.4)
+ * **postfix**
+
+recommended
+-----------
+
+ * python sqlalchemy
+
+--------------------------------
+Getting and installing Postomaat
+--------------------------------
+
+cloning source from github
+--------------------------
+
+::
+
+	git clone https://github.com/gryphius/postomaat.git
+	cd postomaat
+	python setup.py install
+
+latest source package from github
+---------------------------------
+
+::
+
+	wget https://github.com/gryphius/postomaat/tarball/master -O postomaat-latest.tar.gz
+	tar -xvzf postomaat-latest.tar.gz
+	cd cd gryphius-postomaat-*
+	python setup.py install
+
+latest released package from pypi
+---------------------------------
+
+TODO
+
+

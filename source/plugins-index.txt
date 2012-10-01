@@ -1,0 +1,236 @@
+Plugins
+=======
+
+.. toctree::
+   :maxdepth: 2
+
+--------
+Overview
+--------
+
+TODO
+
+Types of responses
+..................
+
+Scanner plugins are the most important type of plugins. They do the actual mail content filtering.
+Plugins are run in the order specified in the ``plugins=`` configuration option. Each plugin returns an action
+for the message:
+
+
+REJECT="reject"
+DEFER="defer"
+DEFER_IF_REJECT="defer_if_reject"
+DEFER_IF_PERMIT="defer_if_permit"
+ACCEPT="ok"
+OK="ok" #same as ACCEPT
+DUNNO="dunno"
+DISCARD="discard"
+FILTER="filter"
+HOLD="hold"
+PREPEND="prepend"
+REDIRECT="redirect"
+WARN="warn"
+
+ * **DUNNO**  : This plugin decides not to take any final action, continue with the next plugin (this is the most common case)
+ * **ACCEPT** : Whitelist this message, don't run any remaining plugins
+ * **DELETE** : Silently delete this message (The sender will think it has been delivered)
+ * **DEFER**  : Temporary Reject (4xx error), used for error conditions in after-queue mode or things like greylisting in before-queue mode
+ * **REJECT** : Reject this message, should only be used in before-queue mode (in after-queue mode this would produce a bounce / backscatter)
+
+If one of the plugins returns something other than *DUNNO*, all remaining plugins are skipped.
+If all plugins return DUNNO, the message is accepted
+
+
+
+--------------------
+Plugin configuration
+--------------------
+
+Each plugin has its own configuration section in ``/etc/postomaat/postomaat.conf`` or any ``*.conf`` in ``/etc/postomaat/conf.d``. The section is usually
+named like the plugin itself.
+
+
+-----------------------------
+Plugins included in postomaat
+-----------------------------
+
+.. include:: includedplugins-autogen.txt
+
+
+------------------------
+Writing your own plugins
+------------------------
+
+Assuming you know python basics, writing plugins for postomaat is very easy. All you have to do is create a new class which extends from ``ScannerPlugin``, override ``__str__`` to provide a nice human readable name and override ``examine`` to do the actual work of your plugins. ``examine`` should return one of the action codes above (DUNNO, DEFER, DELETE, ....). You probably only need stuff from ``postomaat.shared``, so it's probably a good idea to get familiar with that module. 
+
+
+
+This is a quick example of how your plugin code skeleton would look like:
+
+::
+
+
+	TODO
+
+
+First of all, you need a few imports. ScannerPlugin (so you can extend from it), and possible return values for your Plugin, DUNNO might be enough depending on what your plugin does.
+
+::
+
+	from postomaat.shared import ScannerPlugin,DUNNO
+
+in __init__ you only call BasicPlugins __init__  for now. This sets self.config and self.section on the object where you later can read config options (eg. self.config.get(self.section,'somevalue').  Do NOT load the plugin configuration here. __init__ is only called once when postomaat starts up. Always load plugin config in ``examine``.
+
+::
+
+    def __init__(self,config,section=None):
+        ScannerPlugin.__init__(self,config,section)
+
+
+then code your ``examine`` method. You will have to work with the ``suspect`` (TODO: LINK HERE) object, which is a representation of the message being analyzed. The suspect has ``tags`` that are read and written by plugins. You can tag a message as virus, as spam, define your own tags, read tags from previous plugins...  
+
+TODO: describe get_values
+
+
+Common Tasks ("API" FAQ)
+........................
+
+
+define configuration options for your plugin
+--------------------------------------------
+
+in order to make 'lint' and 'postomaat_conf' work with your plugin it should tell the core what config options it expects. this is done by creating a dictionary named 'requiredvars' in the plugins init:
+
+Example:
+
+::
+
+	def __init__(self,config,section=None):
+		ScannerPlugin.__init__(self,config,section)
+		self.requiredvars={
+		    'host':{
+		        'default':'localhost',
+		        'description':'hostname',
+		    },
+		    
+		    'username':{
+		        'default':'root',
+		    },
+
+		    'password':{
+		        'default':``,
+		        'confidential':True,
+		    },
+
+	       }
+
+
+This would tell postomaat that your plugin has three config options: host, username and password. 
+
+The 'dict of dicts' uses your config option name as key for the outer dict. The inner dict supports the following keys:
+
+ * ``default`` - Default value, used if the option is not specified in the config file
+ * ``section`` - config section to check. by default postomaat assumes that the plugin reads its own config section. override this if your plugin requires a config option from a different plugin or from the main config
+ * ``confidential`` - set this to True if postomaat_conf should treat this option confidential and redact it in 'postomaat_conf -n' (passwords etc)
+ * ``validator`` - function that should be called to validate if the configured value is valid. the function will receive the value as argument and must return True or False
+ * ``deprecated`` - mark a config option as deprecated
+
+
+read the config
+---------------
+
+Configs in postomaat are stored in ``/etc/postomaat/postomaat.conf`` (or any .conf file in /etc/postomaat/conf.d ) in ini-style format. Your plugin gets its own Section named like the Plugin Class. 
+
+example:
+
+::
+
+	[DemoPlugin]
+	maxsize=10382
+
+
+you can then read the config in your plugin with the usual methods from a python ConfigParser object ( http://docs.python.org/library/configparser.html )
+
+::
+
+	maxsize=self.config.getint(self.section, 'maxsize')
+
+
+Important: always the configs in ``examine`` (and not in ``init`` !). reading the config in init breaks loading default values and prevents on-the-fly config reload
+
+
+add headers
+-----------
+
+TODO: PREPEND
+
+
+write to the log
+----------------
+
+your plugin has a _logger method that returns a standard python logger object, so you can use the info / debug / error / fatal methods.
+
+Example:
+
+::
+
+	self._logger().info('hello world from DemoPlugin')
+
+
+
+
+make plugin '--lint'-able
+-------------------------
+
+by default, ``lint()`` only validates the plugin's configuration settings from ``self.requiredvars``. You can override ``lint()`` to do more stuff.
+
+ * use simple ``print`` in this method, no logging stuff. 
+ * if you override ``lint()`` you should run ``self.checkConfig()`` to test the configuration
+ * ``lint()`` must return True or False
+
+example of a plugin that would check if an imap account is available:
+
+
+::
+
+    def lint(self):
+        allok=(self.checkConfig() and self.lint_imap())
+        return allok
+    
+    def lint_imap(self):
+        try:
+            M=imaplib.IMAP4(self.config.get(self.section, 'host'))
+            (type,data)=M.login(self.config.get(self.section, 'user'),self.config.get(self.section, 'password'))
+            if type!='OK':
+                print('Could not login to imap review account: %s',data)
+                return False
+            return True
+        except Exception, e:
+            print "Could not login to imap host:%s - Error %s"%(self.config.get('StubPlugin', 'host'),e)
+        return False
+
+
+
+Debugging
+.........
+
+
+
+debug a plugin without running postomaat
+----------------------------------------
+
+TODO: document postomaat --test
+
+
+Deploying Plugins
+.................
+
+ * if there is no ``plugindir`` set in postomaat.conf yet, define a new directory for custom plugins. eg ``/usr/local/postomaat/plugins``.
+ * copy your plugin file to this directory
+ * depending on the type of your plugin, add it to the plugin/prependers/appenders config option. Eg. if your scanner plugin class is ``MyHeloPlugin`` in the file myplugin.py you would add ``myplugin.MyHeloPlugin`` to the ``plugins`` config
+ * if your plugin reads configuration entries, make sure those are present in postomaat.conf or in a custom conf-file in /etc/postomaat/conf.d
+ * run ``postomaat --lint`` to check if postomaat is happy with your new plugin
+ * (re)start postomaat 
+
+

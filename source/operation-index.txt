@@ -1,0 +1,27 @@
+Operation
+=========
+
+.. toctree::
+   :maxdepth: 2
+
+----------
+Monitoring
+----------
+
+TODO
+
+---------------------------
+Troubleshooting & Debugging
+---------------------------
+
+Postomaat doesn't even start
+........................
+
+ * run ``postomaat --lint`` as root. are there any errors?
+ * did you create /etc/postomaat/logging.conf (by renaming the logging.conf.dist file) ?
+ * check for errors in yourmaillog
+ * run postomaat in foreground by setting ``daemonize=0`` in postomaat.conf
+
+
+
+

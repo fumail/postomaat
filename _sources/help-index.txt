@@ -1,0 +1,27 @@
+Support
+=======
+
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+
+---
+FAQ
+---
+
+ * no questions asked frequently yet ;-)
+
+------------
+Mailing list
+------------
+
+For developer/user questions about postomaat please use the fuglu mailing list. (Postomaat shares a lot of code with fuglu)
+
+http://fuglu.org/mailman/listinfo/fuglu-users_fuglu.org
+
+
+
+
+
+

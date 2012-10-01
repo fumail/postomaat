@@ -1,0 +1,55 @@
+Configuration
+=============
+
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+
+
+-------------------
+Basic Configuration
+-------------------
+
+Postomaat
+.........
+
+First of all, rename remove the .dist ending from all files in ``/etc/postomaat``, so you have a basic default configuration.
+
+edit ``/etc/postomaat/postomaat.conf`` and change parameters if you like
+
+
+Then check if postomaat is happy with your configuration:
+
+
+::
+
+	postomaat --lint
+
+
+
+
+Postfix
+.......
+
+Once postomaat is up and running, we need to tell Postfix to use it as an policy access daemon
+
+Detailed documentation is available on the `postfix <http://www.postfix.org/SMTPD_POLICY_README.html>`_ website.
+
+here is a quick example.
+
+
+in ``main.cf`` add
+
+
+::
+
+	smtpd_recipient_restrictions = permit_mynetworks,
+                               reject_unauth_pipelining,
+                               reject_unauth_destination,
+                               check_policy_service inet:127.0.0.1:9998
+
+
+
+run ``postfix reload`` and check your maillog for errors. from now on, messages should be filtered by postomaat!
+

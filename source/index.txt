@@ -1,16 +1,19 @@
-.. postomaat documentation master file, created by
-   sphinx-quickstart on Thu Jul 19 06:25:21 2012.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Postomaat Postfix Policy Daemon
+===============================
 
-Welcome to postomaat's documentation!
-=====================================
+Warning: this documentation is far from finsihed, and mostly copied from fuglu (postomaat shares a lot of code with fuglu).
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
+   overview-index
+   installation-index
+   configuration-index
+   operation-index
+   plugins-index
+   help-index
 
 
 Indices and tables
@@ -19,4 +22,5 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
 
