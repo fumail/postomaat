@@ -14,7 +14,7 @@
 #
 # $Id: funkyconsole.py 7 2009-04-09 06:51:25Z oli $
 #
-class FunkyConsole:
+class FunkyConsole(object):
     """Totally useless console colors for the lint mode"""
     
     def __init__(self):
