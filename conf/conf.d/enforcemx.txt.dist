@@ -1,0 +1,6 @@
+# this is an example file
+# the format is as follows:
+# recipient.domain.name		comma,separated,list,of,permitted,ips,and,networks
+
+example.com		1.2.3.4,192.168.0.0/24
+example.org		192.168.1.0/24,192.168.3.0/24,192.168.20.0/24
