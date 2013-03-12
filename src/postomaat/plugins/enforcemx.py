@@ -10,16 +10,17 @@ not pointing directly to your hosting server). You can reject mail coming
 from unexpected hosts trying to bypass the spam filter. 
 """
 
+__version__ = "0.0.2"
 
 import logging
 import os
 from threading import Lock
 
 try:
-    from netcidr import CIDR
-    have_netcidr = True
+    from netaddr import IPAddress, IPNetwork
+    have_netaddr = True
 except:
-    have_netcidr = False
+    have_netaddr = False
 
 
 from postomaat.shared import ScannerPlugin, DUNNO, DEFER_IF_PERMIT, REJECT, strip_address, extract_domain
@@ -105,7 +106,7 @@ class MXCache(FuFileCache):
                 
                 for item in nets.split(','):
                     item = item.strip()
-                    item = CIDR(item)
+                    item = IPNetwork(item)
                     if not item in self.mxnets[domain]:
                         self.mxnets[domain].append(item)
                         
@@ -119,7 +120,7 @@ class MXCache(FuFileCache):
         
         perm = False
         for net in self.mxnets[domain]:
-            if ip in net.iterIPs():
+            if IPAddress(ip) in net:
                 perm = True
                 break
         return perm
@@ -136,7 +137,7 @@ class EnforceMX(ScannerPlugin):
         
         
     def examine(self,suspect):
-        if not have_netcidr:
+        if not have_netaddr:
             return DUNNO,None
         
         client_address=suspect.get_value('client_address')
@@ -172,8 +173,8 @@ class EnforceMX(ScannerPlugin):
     def lint(self):
         lint_ok = True
         
-        if not have_netcidr:
-            print 'netcidr python module not available - please install'
+        if not have_netaddr:
+            print 'netaddr python module not available - please install'
             lint_ok =  False
         
         if not self.checkConfig():
