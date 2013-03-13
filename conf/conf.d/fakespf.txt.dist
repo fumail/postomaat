@@ -1,0 +1,3 @@
+# set "unknown" to accept from servers without PTR record
+# domain names always accept subdomain entries, e.g. if you set example.com, mail from mx.example.com will be accepted 
+example.com	192.168.0.6, mail.example.com
