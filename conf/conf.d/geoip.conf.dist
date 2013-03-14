@@ -1,0 +1,6 @@
+[GeoIP]
+database=/data/geoip/GeoIP.dat
+blacklist=CN,IN,KP,KR,TW,VN,A1,A2
+whitelist=
+#what to do with unknown countries? this affects local IP-addresses. Set this to DUNNO or REJECT
+on_unknown=DUNNO
