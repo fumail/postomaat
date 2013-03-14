@@ -33,8 +33,6 @@ class FuFileCache(object):
 
     def __init__(self, filename, **kw):
         self.__dict__ = self.__shared_state
-        if not hasattr(self, 'uris'):
-            self.uris=[]
 
         if not hasattr(self, 'lock'):
             self.lock=Lock()
