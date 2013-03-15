@@ -84,7 +84,7 @@ class Suspect(object):
         return self.tags[key]
 
     def __str__(self):
-        return "Suspect: %s"%self.tags
+        return "Suspect:sender=%s recipient=%s tags=%s"%(self.from_address, self.to_address, self.tags)
     
     @property
     def from_address(self):
