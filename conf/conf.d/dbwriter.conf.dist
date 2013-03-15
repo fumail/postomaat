@@ -1,4 +1,4 @@
 [DBWriter]
-dbconnection=mysql://root@localhost?charset=utf8
+dbconnection=mysql://root@localhost/dbwriter?charset=utf8
 table=maillog
 fields=from_address to_address from_domain to_domain size queue_id:queueid recipient_count:num_recipients client_address:ip client_name:revdns helo_name:helo sasl_sender:sasl_user sasl_method

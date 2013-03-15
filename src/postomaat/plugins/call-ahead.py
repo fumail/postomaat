@@ -1,16 +1,12 @@
 #!/usr/bin/python
 import sys
 
-#TODO: full rewrite to sqlalchemy
-#TODO: propagate tables
-
-
 #in case the tool is not installed system wide (development...)
 if __name__ =='__main__':
     sys.path.append('../../')
 
 from postomaat.shared import *
-from postomaat.db import *
+from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
 from threading import Lock
 import time
 import smtplib
@@ -50,9 +46,31 @@ class AddressCheck(ScannerPlugin):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
         self.cache=MySQLCache(config)
-        self.requiredvars=((self.section,'dbconnection'),(self.section,'always_assume_rec_verification_support'),(self.section,'always_accept'))
+        self.requiredvars={
+            'dbconnection':{
+                'default':"mysql://root@localhost/callahead?charset=utf8",
+                'description':'SQLAlchemy Connection string',
+            },
+             
+            'always_assume_rec_verification_support':{
+                'default': "False",
+                'description': """set this to true to disable the blacklisting of servers that don't support recipient verification"""
+
+            }, 
+                           
+            'always_accept':{
+                'default': "False",
+                'description': """Set this to always return 'DUNNO' but still perform the recipient check and fill the cache (learning mode without rejects)"""
+
+            },              
+                             
+        }
         
     def lint(self):
+        if not SQLALCHEMY_AVAILABLE:
+            print "sqlalchemy is not installed"
+            return False
+        
         if not self.checkConfig():
             return False
         try:
@@ -303,7 +321,7 @@ class SMTPTest(object):
         (tp,val)=serverconfig.split(':',1)
         
         if tp=='sql':
-            conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+            conn=get_session(self.config.get('AddressCheck','dbconnection'))
             ret=conn.execute(val)
             return [result[0] for result in ret]
         elif tp=='mx':
@@ -443,7 +461,7 @@ class MySQLCache(CallAheadCacheInterface):
     
     def blacklist(self,domain,relay,seconds,failstage='rcpt_to',reason='unknown'):
         """Put a domain/relay combination on the recipient verification blacklist for a certain amount of time"""
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
 
         statement="""INSERT INTO ca_blacklist (domain,relay,expiry_ts,check_stage,reason) VALUES (:domain,:relay,now()+interval :interval second,:checkstag,:reason)
         ON DUPLICATE KEY UPDATE expiry_ts=now()+interval :interval second,check_stage=:checkstage,reason=:reason
@@ -459,7 +477,7 @@ class MySQLCache(CallAheadCacheInterface):
             
     def is_blacklisted(self,domain,relay):
         """Returns True if the server/relay combination is currently blacklisted and should not be used for recipient verification"""
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return False
         statement="SELECT reason FROM ca_blacklist WHERE domain=:domain and relay=:relay and expiry_ts>now()"
@@ -469,7 +487,7 @@ class MySQLCache(CallAheadCacheInterface):
         
     def unblacklist(self,relayordomain):
         """remove a server from the blacklist/history"""
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         statement="""DELETE FROM ca_blacklist WHERE domain=:removeme or relay=:removeme"""
         values={'removeme':relayordomain}
         res=conn.execute(statement,values)
@@ -477,7 +495,7 @@ class MySQLCache(CallAheadCacheInterface):
        
     def get_blacklist(self):
         """return all blacklisted servers"""
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return None
         statement="SELECT domain,relay,reason,expiry_ts FROM ca_blacklist WHERE expiry_ts>now() ORDER BY domain"
@@ -486,7 +504,7 @@ class MySQLCache(CallAheadCacheInterface):
         return result 
         
     def wipe_address(self,address):
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return
         
@@ -496,7 +514,7 @@ class MySQLCache(CallAheadCacheInterface):
         return res.rowcount
     
     def cleanup(self):
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         postime=self.config.getint('AddressCheck','keep_positive_history_time')
         negtime=self.config.getint('AddressCheck','keep_negative_history_time')
         statement="""DELETE FROM ca_addresscache WHERE positive=:pos and expiry_ts<(now() -interval :keeptime day)"""
@@ -517,7 +535,7 @@ class MySQLCache(CallAheadCacheInterface):
         if positive is False all negative cache entries are deleted
         if positive is True, all positive cache entries are deleted
         """
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return
         
@@ -534,7 +552,7 @@ class MySQLCache(CallAheadCacheInterface):
         
     def put_address(self,address,seconds,positiveEntry=True,message=None):
         """put address into the cache"""
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return
         statement="""INSERT INTO ca_addresscache (email,domain,expiry_ts,positive,message) VALUES (:email,:domain,now()+interval :interval second,:positive,:message)
@@ -553,7 +571,7 @@ class MySQLCache(CallAheadCacheInterface):
     
     def get_address(self,address):
         """Returns a tuple (positive(boolean),message) if a cache entry exists, None otherwise"""
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return
         statement="SELECT positive,message FROM ca_addresscache WHERE email=:email and expiry_ts>now()"
@@ -562,7 +580,7 @@ class MySQLCache(CallAheadCacheInterface):
         return res.first()
      
     def get_all_addresses(self,domain):
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return None
         statement="SELECT email,positive FROM ca_addresscache WHERE domain=:domain and expiry_ts>now() ORDER BY email"
@@ -572,7 +590,7 @@ class MySQLCache(CallAheadCacheInterface):
         return result
     
     def get_total_counts(self):
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         statement="SELECT count(*) FROM ca_addresscache WHERE expiry_ts>now() and positive=1"
         result=conn.execute(statement)
         poscount=result.fetchone()[0]
@@ -605,14 +623,14 @@ class MySQLConfigBackend(ConfigBackendInterface):
     
     def get_domain_config_value(self,domain,key):
         retval=None
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         
         res=conn.execute("SELECT confvalue FROM ca_configoverride WHERE domain=:domain and confkey=:confkey",{'domain':domain,'confkey':key})
         return res.scalar()
     
     def get_domain_config_all(self,domain):
         retval=dict()
-        conn=get_connection(self.config.get('AddressCheck','dbconnection'))
+        conn=get_session(self.config.get('AddressCheck','dbconnection'))
         res=conn.execute("SELECT confkey,confvalue FROM ca_configoverride WHERE domain=:domain",{'domain':domain})
         for row in res:
             retval[row[0]]=row[1]

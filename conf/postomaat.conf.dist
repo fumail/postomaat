@@ -14,7 +14,7 @@ user=nobody
 group=nobody
 
 #what plugins do we load, comma separated
-plugins=postomaat.plugins.call-ahead.AddressCheck
+plugins=
 
 #custom plugin dir
 plugindir=

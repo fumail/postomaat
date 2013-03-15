@@ -1,10 +1,14 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+SQLALCHEMY_AVAILABLE=False
+try:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import scoped_session, sessionmaker
+    SQLALCHEMY_AVAILABLE=True
+except:
+    pass
 
 _enginecache={}
 
-
-def get_connection(dburl):
+def get_session(dburl):
     if dburl in _enginecache:
         engine= _enginecache[dburl]
     else:
@@ -14,4 +18,7 @@ def get_connection(dburl):
     session = scoped_session(maker)
     session.configure(bind=engine)
     return session
-    
+
+
+def get_gonnection(dburl):
+    return get_session(dburl)    

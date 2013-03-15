@@ -1,11 +1,30 @@
 from postomaat.shared import *
-from postomaat.db import *
+from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
+
 
 class DBWriter(ScannerPlugin):
     
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
+        self.requiredvars={
+            'dbconnection':{
+                'default':"mysql://root@localhost/dbwriter?charset=utf8",
+                'description':'SQLAlchemy Connection string',
+            },
+             
+            'table':{
+                'default': "maillog",
+                'description': """Tablename where we should insert mails"""
+
+            }, 
+                           
+            'fields':{
+                'default': "from_address to_address from_domain to_domain size queue_id:queueid",
+                'description': """Fields that should be inserted. use <fieldname>:<columnname> or just <fieldname> if the database column name matches the fieldname"""
+            },              
+                             
+        }
         
     def get_fieldmap(self):
         """create the mapping from tags to column names based on the config string
@@ -30,6 +49,11 @@ class DBWriter(ScannerPlugin):
         return fieldmap
     
     def lint(self):
+        if not SQLALCHEMY_AVAILABLE:
+            print "sqlalchemy is not installed"
+            return False
+        
+        
         #check fieldmap, select all fields (if we can't select, we can't insert)
         if not self.checkConfig():
             return False
@@ -39,7 +63,7 @@ class DBWriter(ScannerPlugin):
         requiredcolumnnames=fieldmap.keys()
         dbcolumns=",".join(requiredcolumnnames)
         try:
-            conn=get_connection(self.config.get(self.section,'dbconnection'))
+            conn=get_session(self.config.get(self.section,'dbconnection'))
         except Exception,e:
             print "DB Connection failed. Reason: %s"%(str(e))
             return False
@@ -104,7 +128,7 @@ class DBWriter(ScannerPlugin):
             
             #print sql_insert
             #print data
-            conn=get_connection(self.config.get(self.section,'dbconnection'))
+            conn=get_session(self.config.get(self.section,'dbconnection'))
             conn.execute(sql_insert,data)
         except Exception,e:
             self.logger.error("DB Writer plugin failed, Log not written. : %s"%str(e))

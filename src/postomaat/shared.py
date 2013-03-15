@@ -84,7 +84,54 @@ class Suspect(object):
         return self.tags[key]
 
     def __str__(self):
-        return "Suspect: %s"%self.tags
+        return "Suspect:sender=%s recipient=%s tags=%s"%(self.from_address, self.to_address, self.tags)
+    
+    @property
+    def from_address(self):
+        sender=self.get_value('sender')
+        if sender==None:
+            return None
+        
+        try:
+            addr=strip_address(sender)
+            return addr
+        except:
+            return None
+    
+    @property
+    def from_domain(self):
+        from_address=self.from_address
+        if from_address==None:
+            return None
+        
+        try:
+            return extract_domain(from_address)
+        except:
+            return None
+        
+    @property
+    def to_address(self):
+        rec=self.get_value('recipient')
+        if rec==None:
+            return None
+        
+        try:
+            addr=strip_address(rec)
+            return addr
+        except:
+            return None
+    
+    @property
+    def to_domain(self):
+        rec=self.to_address
+        if rec==None:
+            return None
+        try:
+            return extract_domain(rec)
+        except:
+            return None
+    
+
         
 ##it is important that this class explicitly extends from object, or __subclasses__() will not work!
 class BasicPlugin(object):
@@ -109,16 +156,44 @@ class BasicPlugin(object):
     
     def checkConfig(self):
         allOK=True
-        for configvar in self.requiredvars:
-            (section,config)=configvar
-            try:
-                var=self.config.get(section,config)
-            except ConfigParser.NoOptionError:
-                print "Missing configuration value [%s] :: %s"%(section,config)
-                allOK=False
-            except ConfigParser.NoSectionError:
-                print "Missing configuration section %s"%(section)
-                allOK=False
+        
+        #old config style
+        if type(self.requiredvars)==tuple or type(self.requiredvars)==list:
+            for configvar in self.requiredvars:
+                if type(self.requiredvars)==tuple:
+                    (section,config)=configvar
+                else:
+                    config=configvar
+                    section=self.section                   
+                try:
+                    var=self.config.get(section,config)
+                except ConfigParser.NoOptionError:
+                    print "Missing configuration value [%s] :: %s"%(section,config)
+                    allOK=False
+                except ConfigParser.NoSectionError:
+                    print "Missing configuration section %s"%(section)
+                    allOK=False    
+        
+        #new config style
+        if type(self.requiredvars)==dict:
+            for config,infodic in self.requiredvars.iteritems():
+                section=self.section
+                if 'section' in infodic:
+                    section=infodic['section']
+                    
+                try:
+                    var=self.config.get(section,config)
+                    if 'validator' in infodic:
+                        if not infodic["validator"](var):
+                            print "Validation failed for [%s] :: %s"%(section,config)
+                            allOK=False          
+                except ConfigParser.NoSectionError:
+                    print "Missing configuration section [%s] :: %s"%(section,config)
+                    allOK=False
+                except ConfigParser.NoOptionError:
+                    print "Missing configuration value [%s] :: %s"%(section,config)
+                    allOK=False
+        
         return allOK
 
 
