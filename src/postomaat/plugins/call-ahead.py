@@ -46,7 +46,25 @@ class AddressCheck(ScannerPlugin):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
         self.cache=MySQLCache(config)
-        self.requiredvars=((self.section,'dbconnection'),(self.section,'always_assume_rec_verification_support'),(self.section,'always_accept'))
+        self.requiredvars={
+            'dbconnection':{
+                'default':"mysql://root@localhost/callahead?charset=utf8",
+                'description':'SQLAlchemy Connection string',
+            },
+             
+            'always_assume_rec_verification_support':{
+                'default': "False",
+                'description': """set this to true to disable the blacklisting of servers that don't support recipient verification"""
+
+            }, 
+                           
+            'always_accept':{
+                'default': "False",
+                'description': """Set this to always return 'DUNNO' but still perform the recipient check and fill the cache (learning mode without rejects)"""
+
+            },              
+                             
+        }
         
     def lint(self):
         if not SQLALCHEMY_AVAILABLE:

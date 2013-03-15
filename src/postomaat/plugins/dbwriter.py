@@ -7,6 +7,24 @@ class DBWriter(ScannerPlugin):
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
+        self.requiredvars={
+            'dbconnection':{
+                'default':"mysql://root@localhost/dbwriter?charset=utf8",
+                'description':'SQLAlchemy Connection string',
+            },
+             
+            'table':{
+                'default': "maillog",
+                'description': """Tablename where we should insert mails"""
+
+            }, 
+                           
+            'fields':{
+                'default': "from_address to_address from_domain to_domain size queue_id:queueid",
+                'description': """Fields that should be inserted. use <fieldname>:<columnname> or just <fieldname> if the database column name matches the fieldname"""
+            },              
+                             
+        }
         
     def get_fieldmap(self):
         """create the mapping from tags to column names based on the config string
