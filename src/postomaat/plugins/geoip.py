@@ -112,6 +112,25 @@ class GeoIPPlugin(ScannerPlugin):
         self.logger=self._logger()
         self.geoip = None
         
+        self.requiredvars={
+            'database':{
+                'default':'/var/lib/geoip/GeoIP.dat',
+                'description':'location of the MaxMind GeopIP database file',
+            },
+            'blacklist':{
+                'default':'',
+                'description':'list of countries you do not want to receive mail from.',
+            },
+            'whitelist':{
+                'default':'',
+                'description':'list of countries you want want to receive mail from. all other countries will be rejected. If you specify a whitelist, the blacklist will have no function.',
+            },
+            'on_unknown':{
+                'default':'DUNNO',
+                'description':'what to do with unknown countries? this affects local IP-addresses. Set this to DUNNO or REJECT',
+            },
+        }
+        
         
         
     def examine(self,suspect):
