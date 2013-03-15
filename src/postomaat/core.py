@@ -307,8 +307,11 @@ class MainController(object):
         suspect=Suspect(valuedict)
         if not self.load_plugins():
             sys.exit(1)
-        result=SessionHandler(None, self.config, self.plugins).run_plugins(suspect, self.plugins)
-        return result
+        sesshandler=SessionHandler(None, self.config, self.plugins)
+        sesshandler.run_plugins(suspect, self.plugins)
+        action=sesshandler.action
+        arg=sesshandler.arg
+        return (action,arg)
          
     def shutdown(self):
         for server in self.servers:
