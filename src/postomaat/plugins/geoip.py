@@ -33,8 +33,6 @@ class FuFileCache(object):
 
     def __init__(self, filename, **kw):
         self.__dict__ = self.__shared_state
-        if not hasattr(self, 'uris'):
-            self.uris=[]
 
         if not hasattr(self, 'lock'):
             self.lock=Lock()
@@ -82,8 +80,7 @@ class FuFileCache(object):
         
 class GeoIPCache(FuFileCache):        
     def _initlocal(self, **kw):
-        if not os.path.exists(self.file):
-            raise IOError('Could not find GeoIP database %s' % self.file)
+        self.geoip = None
              
         
     def _reallyloadData(self, filename):
@@ -113,12 +110,19 @@ class GeoIPPlugin(ScannerPlugin):
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
+        self.geoip = None
         
         
         
     def examine(self,suspect):
         if not have_geoip:
             return DUNNO
+        
+        database = self.config.get('GeoIP', 'database')
+        if not os.path.exists(database):
+            return DUNNO
+        if not self.geoip:
+            self.geoip = GeoIPCache(database)
         
         client_address=suspect.get_value('client_address')
         if client_address is None:
@@ -133,9 +137,6 @@ class GeoIPPlugin(ScannerPlugin):
         unknown = DUNNO
         if on_unknown.strip().upper() == 'REJECT':
             unknown = REJECT
-        
-        database = self.config.get('GeoIP', 'database')
-        self.geoip = GeoIPCache(database)
         
         cc = self.geoip.country_code(client_address)
         cn = self.geoip.country_name(cc)
@@ -160,6 +161,11 @@ class GeoIPPlugin(ScannerPlugin):
         
         if not have_geoip:
             print 'pygeoip module not installed - this plugin will do nothing'
+            lint_ok = False
+            
+        database = self.config.get('GeoIP', 'database')
+        if not os.path.exists(database):
+            print 'Could not find geoip database file - this plugin will do nothing'
             lint_ok = False
         
         if not self.checkConfig():
