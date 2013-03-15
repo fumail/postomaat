@@ -417,6 +417,7 @@ class MainController(object):
         
         if allOK:
             self.plugins=newplugins
+            self.propagate_plugin_defaults()
             
         return allOK
     
