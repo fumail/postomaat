@@ -1,0 +1,9 @@
+[SPFPlugin]
+# which sending hosts/networks should be excluded from SPF checks
+ip_whitelist=127.0.0.0/8
+# which sender domains should be excluded from SPF checks
+domain_whitelist=example.com
+# what to do on softfail. set this to REJECT or DUNNO
+on_softfail=DUNNO
+# what to do on softerror. set this to DEFER or DUNNO
+on_softerror=DEFER
