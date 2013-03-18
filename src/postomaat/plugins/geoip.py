@@ -80,8 +80,7 @@ class FuFileCache(object):
         
 class GeoIPCache(FuFileCache):        
     def _initlocal(self, **kw):
-        if not os.path.exists(self.file):
-            raise IOError('Could not find GeoIP database %s' % self.file)
+        self.geoip = None
              
         
     def _reallyloadData(self, filename):
@@ -111,12 +110,38 @@ class GeoIPPlugin(ScannerPlugin):
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
+        self.geoip = None
+        
+        self.requiredvars={
+            'database':{
+                'default':'/var/lib/geoip/GeoIP.dat',
+                'description':'location of the MaxMind GeopIP database file',
+            },
+            'blacklist':{
+                'default':'',
+                'description':'list of countries you do not want to receive mail from.',
+            },
+            'whitelist':{
+                'default':'',
+                'description':'list of countries you want want to receive mail from. all other countries will be rejected. If you specify a whitelist, the blacklist will have no function.',
+            },
+            'on_unknown':{
+                'default':'DUNNO',
+                'description':'what to do with unknown countries? this affects local IP-addresses. Set this to DUNNO or REJECT',
+            },
+        }
         
         
         
     def examine(self,suspect):
         if not have_geoip:
             return DUNNO
+        
+        database = self.config.get('GeoIP', 'database')
+        if not os.path.exists(database):
+            return DUNNO
+        if not self.geoip:
+            self.geoip = GeoIPCache(database)
         
         client_address=suspect.get_value('client_address')
         if client_address is None:
@@ -131,9 +156,6 @@ class GeoIPPlugin(ScannerPlugin):
         unknown = DUNNO
         if on_unknown.strip().upper() == 'REJECT':
             unknown = REJECT
-        
-        database = self.config.get('GeoIP', 'database')
-        self.geoip = GeoIPCache(database)
         
         cc = self.geoip.country_code(client_address)
         cn = self.geoip.country_name(cc)
@@ -158,6 +180,11 @@ class GeoIPPlugin(ScannerPlugin):
         
         if not have_geoip:
             print 'pygeoip module not installed - this plugin will do nothing'
+            lint_ok = False
+            
+        database = self.config.get('GeoIP', 'database')
+        if not os.path.exists(database):
+            print 'Could not find geoip database file - this plugin will do nothing'
             lint_ok = False
         
         if not self.checkConfig():

@@ -171,6 +171,17 @@ class EnforceMX(ScannerPlugin):
         self.mxrules = None
         self.spfrules = None
         
+        self.requiredvars={
+            'datafile_mx':{
+                'default':'/etc/postomaat/conf.d/enforcemx.txt',
+                'description':'recipient domain based rule file',
+            },
+            'datafile_spf':{
+                'default':'/etc/postomaat/conf.d/fakespf.txt',
+                'description':'sender domain based rule file',
+            },
+        }
+        
         
         
     def examine(self,suspect):
