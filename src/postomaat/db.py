@@ -20,5 +20,5 @@ def get_session(dburl):
     return session
 
 
-def get_gonnection(dburl):
+def get_connection(dburl):
     return get_session(dburl)    
