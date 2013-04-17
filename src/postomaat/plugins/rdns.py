@@ -1,7 +1,7 @@
 """
 plugins with rdns checks
 """
-from postomaat.shared import ScannerPlugin,DUNNO
+from postomaat.shared import ScannerPlugin,DUNNO,REJECT,DEFER,DEFER_IF_PERMIT,FILTER,HOLD,PREPEND,WARN
 import re
 
 class IdentityCrisis(ScannerPlugin):
@@ -28,10 +28,25 @@ class IdentityCrisis(ScannerPlugin):
         if revclient==None or revclient.strip()=='unknown' or revclient.strip()=='':
             helo_name=suspect.get_value('helo_name')
             if helo_name==None or self.pattern.match(helo_name)!=None:
-                retaction=self.config.get(self.section,'action')
-                retmessage=self.config.get(self.section,'message')
+                retaction=self.config.get(self.section,'action').strip()
+                retmessage=self.config.get(self.section,'message').strip()
                 
         return retaction,retmessage
-                                   
+
+    def lint(self):
+        lint_ok=True
+        retaction=self.config.get(self.section,'action').strip().lower()
+        reasonable=[REJECT,DEFER,DEFER_IF_PERMIT,FILTER,HOLD,PREPEND,WARN]
+        if retaction not in reasonable:
+            print "are you sure about action '%s' ?"%retaction
+            print "I'd excpect one of %s"%(",".join(reasonable))
+            lint_ok=False
+        
+        if not self.checkConfig():
+            print 'Error checking config'
+            lint_ok = False
+        
+        return lint_ok
+                        
     def __str__(self):
         return "Identity Crisis"
