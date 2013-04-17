@@ -40,11 +40,10 @@ class FuFileCache(object):
             self.logger=logging.getLogger(str(self))
         if not hasattr(self,'lastreload'):
             self.lastreload=0
-        self.file = filename
         
         self._initlocal(**kw)
         
-        self.reloadifnecessary(self.file)
+        self.reloadifnecessary(filename)
         
     
     def reloadifnecessary(self, filename):
@@ -88,6 +87,7 @@ class GeoIPCache(FuFileCache):
         
     
     def country_code(self, ip):
+        self.reloadifnecessary(self.filename)
         cc = u''
         try:
             cc = self.geoip.country_code_by_addr(ip)
@@ -96,6 +96,7 @@ class GeoIPCache(FuFileCache):
         return cc
     
     def country_name(self, cc):
+        self.reloadifnecessary(self.filename)
         country = 'unknown'
         if cc:
             i = pygeoip.const.COUNTRY_CODES.index(cc)
