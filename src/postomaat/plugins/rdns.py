@@ -12,10 +12,10 @@ class IdentityCrisis(ScannerPlugin):
         self.requiredvars={
             'action':{
                 'default':'DEFER',
-                'description':'Action if sender has no FcRDNS and is using a address literal helo',
+                'description':'Action if sender has no FcRDNS and is using a address literal HELO',
             },
             'message':{
-                'default':'No FcrDNS and address literal HELO - who are you?',
+                'default':'No FcrDNS and address literal HELO - Who are you?',
             }
         }
         self.pattern=re.compile('^\[[0-9a-fA-F:.]+\]$')
@@ -32,4 +32,6 @@ class IdentityCrisis(ScannerPlugin):
                 retmessage=self.config.get(self.section,'message')
                 
         return retaction,retmessage
-    
+                                   
+    def __str__(self):
+        return "Identity Crisis"
