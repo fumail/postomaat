@@ -16,6 +16,11 @@ class IdentityCrisis(ScannerPlugin):
             },
             'message':{
                 'default':'No FcrDNS and address literal HELO - Who are you?',
+            },
+                           
+            'protocol_stages':{
+                'default':'',
+                'description':'run only in certain protocol stages(comma separated). empty means all stages',
             }
         }
         self.pattern=re.compile('^\[[0-9a-fA-F:.]+\]$')
@@ -24,6 +29,14 @@ class IdentityCrisis(ScannerPlugin):
         retaction=DUNNO
         retmessage=""
 
+        run_stages_config=self.config.get(self.section,'protocol_stages').lower().strip()
+        if run_stages_config!='':
+            run_stages=run_stages_config.split(',')
+            current_stage=suspect.get_stage().lower()
+            
+            if current_stage not in run_stages:
+                return DUNNO,'plugin skipped in stage %s'%current_stage
+        
         revclient=suspect.get_value('reverse_client_name')
         if revclient==None or revclient.strip()=='unknown' or revclient.strip()=='':
             helo_name=suspect.get_value('helo_name')
@@ -36,10 +49,10 @@ class IdentityCrisis(ScannerPlugin):
     def lint(self):
         lint_ok=True
         retaction=self.config.get(self.section,'action').strip().lower()
-        reasonable=[REJECT,DEFER,DEFER_IF_PERMIT,FILTER,HOLD,PREPEND,WARN]
-        if retaction not in reasonable:
+        reasonable_actions=[REJECT,DEFER,DEFER_IF_PERMIT,FILTER,HOLD,PREPEND,WARN]
+        if retaction not in reasonable_actions:
             print "are you sure about action '%s' ?"%retaction
-            print "I'd excpect one of %s"%(",".join(reasonable))
+            print "I'd expect one of %s"%(",".join(reasonable_actions))
             lint_ok=False
         
         if not self.checkConfig():
