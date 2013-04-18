@@ -135,8 +135,5 @@ class DBWriter(ScannerPlugin):
             
         return DUNNO,None
 
-    def get_stages(self):
-        return [END_OF_MESSAGE, ]
-    
     def __str__(self):
         return "Database Log Plugin"

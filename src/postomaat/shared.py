@@ -229,10 +229,6 @@ class ScannerPlugin(BasicPlugin):
     def examine(self,suspect):
         self._logger().warning('Unimplemented examine() method')
 
-    def get_stages(self):
-        """returns a list of protocol stages in which the plugin should be run"""
-        return [RCPT,]
-
     #legacy...
     def stripAddress(self,address):
         return strip_address(address)

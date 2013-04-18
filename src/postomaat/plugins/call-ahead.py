@@ -81,11 +81,7 @@ class AddressCheck(ScannerPlugin):
             return False
             
         return True
-
-    def get_stages(self):
-        return [RCPT,]
-    
-                               
+                           
     def __str__(self):
         return "Address Check"
   
