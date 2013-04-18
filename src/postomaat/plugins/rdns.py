@@ -17,26 +17,13 @@ class IdentityCrisis(ScannerPlugin):
             'message':{
                 'default':'No FcrDNS and address literal HELO - Who are you?',
             },
-                           
-            'protocol_stages':{
-                'default':'',
-                'description':'run only in certain protocol stages(comma separated). empty means all stages',
-            }
         }
         self.pattern=re.compile('^\[[0-9a-fA-F:.]+\]$')
         
     def examine(self,suspect):
         retaction=DUNNO
         retmessage=""
-
-        run_stages_config=self.config.get(self.section,'protocol_stages').lower().strip()
-        if run_stages_config!='':
-            run_stages=run_stages_config.split(',')
-            current_stage=suspect.get_stage().lower()
-            
-            if current_stage not in run_stages:
-                return DUNNO,'plugin skipped in stage %s'%current_stage
-        
+ 
         revclient=suspect.get_value('reverse_client_name')
         if revclient==None or revclient.strip()=='unknown' or revclient.strip()=='':
             helo_name=suspect.get_value('helo_name')
