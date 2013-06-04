@@ -20,6 +20,8 @@ import socket
 import random
 import ConfigParser
 import os
+import datetime
+from string import Template
 
 #answers
 REJECT="reject"
@@ -49,6 +51,38 @@ ETRN="ETRN"
 PERMIT="PERMIT"
 
 HOSTNAME=socket.gethostname()
+
+def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
+    """Replace templatecontent variables 
+    with actual values from suspect
+    the calling function can pass additional values by passing a values dict
+    
+    if valuesfunction is not none, it is called with the final dict with all built-in and passed values
+    and allows further modifications, like SQL escaping etc
+    """
+    if values==None:
+        values={}
+        
+    values = dict(suspect.values.items()+values.items())
+    values['timestamp']=int(time.time())
+    values['from_address']=suspect.from_address
+    values['to_address']=suspect.to_address
+    values['from_domain']=suspect.from_domain
+    values['to_domain']=suspect.to_domain
+    values['date']=str(datetime.date.today())
+    values['time']=time.strftime('%X')        
+    
+    if valuesfunction!=None:
+        values=valuesfunction(values)
+    else:
+        #replace None with empty string
+        for k,v in values.iteritems():
+            if v==None:
+                values[k]=''
+    
+    template = Template(templatecontent)
+    message= template.safe_substitute(values)
+    return message
 
 class Suspect(object):
     """
