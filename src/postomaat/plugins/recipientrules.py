@@ -52,12 +52,18 @@ class RecRule(object):
                     pass
             if part.operator=='=':
                 hit=susval==checkval
+            elif part.operator=='!':
+                hit=susval!=checkval
             elif part.operator=='>':
+                if susval=='':
+                    susval=0
                 hit=susval>checkval
             elif part.operator=='<':
+                if susval=='':
+                    susval=0
                 hit=susval<checkval
             elif part.operator=='~':
-                hit=re.match(checkval,susval)!=None
+                hit=re.match(checkval,str(susval))!=None
             else:
                 lg.warn("Unknown rule operator '%s'"%part.operator)
                 continue
@@ -90,6 +96,7 @@ class RecipientRules(ScannerPlugin):
     <field>: keys as defined in http://www.postfix.org/SMTPD_POLICY_README.html + from_domain,to_domain,from_address,to_address
     <operator>:
         = : equals
+        ! : does not equal
         < : smaller than
         > : greater than
         ~ : match regex
@@ -104,6 +111,8 @@ class RecipientRules(ScannerPlugin):
     
     [example.org]
     size>20000 from_address~newsletter@ REJECT size ${size} exceeds maximum allowed newsletter size to ${to_address}.    
+    from_domain~(somebank.com|someotherbank.com)$ encryption_keysize<512 REJECT we require strong encryption from ${from_domain}
+    
     """
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
@@ -162,7 +171,7 @@ class RecipientRules(ScannerPlugin):
         rulepattern=re.compile(r'^(?P<rules>.+)\s(?P<action>'+rg+')\s(?P<message>.+)$',re.IGNORECASE)
         headerpattern=re.compile(r'^\[[a-zA-Z0-9_@+.-]+\]$')
         
-        operators=['=','>','<','~']
+        operators=['=','!','>','<','~']
         olist="".join(operators)
         reg='(?P<fieldname>[^'+olist+']+)(?P<operator>['+olist+'])(?P<value>.+)'
         singlerulepattern=re.compile(reg)
