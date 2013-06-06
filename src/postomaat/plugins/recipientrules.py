@@ -110,8 +110,8 @@ class RecipientRules(ScannerPlugin):
     from_address=<> REJECT too many bounces to this recipient
     
     [example.org]
-    size>20000 from_address~newsletter@ REJECT size ${size} exceeds maximum allowed newsletter size to ${to_address}.    
-    from_domain~(somebank.com|someotherbank.com)$ encryption_keysize<512 REJECT we require strong encryption from ${from_domain}
+    size>20000 from_address~/newsletter@/i REJECT size ${size} exceeds maximum allowed newsletter size to ${to_address}.    
+    from_domain~/(somebank.com|someotherbank.com)$/ encryption_keysize<512 REJECT we require strong encryption from ${from_domain}
     
     """
     def __init__(self,config,section=None):
@@ -232,14 +232,48 @@ class RecipientRules(ScannerPlugin):
                     if value=='<>':
                         value=''
                     
-                    #re precompile
+                    
+                    
                     if operator=='~':
-                        try:
-                            value=re.compile(value)
-                        except Exception,e:
-                            lg.warn("%s line %s: invalid regex '%s' : %s"%(filename,lc,value,str(e)))
+                        #re precompile
+                        if not value.startswith('/'):
+                            lg.warn("%s line %s: regex must be slash delimited"%(filename,lc))
                             problem=True
                             break
+                        
+                        endslashindex=value.rfind('/')
+                        if endslashindex<=1:
+                            lg.warn("%s line %s: regex must be slash delimited"%(filename,lc))
+                            problem=True
+                            break
+                        
+                        regex=value[1:endslashindex]
+                        flags=value[endslashindex+1:]
+                        #safety feature request axb
+                        if re.search(r'(^|[^\\])\|\|', regex)!=None:
+                            lg.warn("%s line %s: found dangerous two-pipe combination in regex %s -ignoring this rule"%(filename,lc,regex))
+                            problem=True
+                            break                        
+                        
+                        reflags=0
+                        for flag in flags:
+                            flag=flag.lower()
+                            if flag=='i':
+                                reflags|=re.I
+                            elif flag=='m':
+                                reflags|=re.M
+                            else:
+                                lg.warn("%s line %s: unknown/unsupported regex flag '%s' - ignoring this flag"%(filename,lc,flag))
+                        
+                        try:
+                            value=re.compile(regex,reflags)
+                        except Exception,e:
+                            lg.warn("%s line %s: invalid regex '%s' : %s"%(filename,lc,regex,str(e)))
+                            problem=True
+                            break
+                        
+                        lg.debug("compiled regex '%s' flags %s "%(regex,flags))
+                        
                     rp=RulePart()
                     rp.field=fieldname
                     rp.operator=operator
