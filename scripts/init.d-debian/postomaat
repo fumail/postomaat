@@ -1,0 +1,52 @@
+#! /bin/sh -e
+### BEGIN INIT INFO
+# Provides:          postommat
+# Required-Start:    $network $syslog $postfix $mysql
+# Required-Stop:     $network $syslog $postfix $mysql
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start/stop the postomaat policy daemon
+### END INIT INFO
+
+PID_FILE="/var/run/postomaat.pid"
+DAEMON="/usr/local/bin/postomaat"
+NAME="postomaat"
+
+. /lib/lsb/init-functions
+
+case "$1" in
+start)
+        log_daemon_msg "Starting Postomaat Policy Daemon:" "postomaat"
+        start-stop-daemon --start --pidfile $PID_FILE --exec $DAEMON
+        RETVAL=$?
+        log_end_msg $RETVAL
+        ;;
+stop)
+        log_daemon_msg "Stopping Postomaat Policy Daemon:" "postomaat"
+        kill `cat $PID_FILE`
+        rm -f $PID_FILE
+        RETVAL=$?
+        log_end_msg $RETVAL
+        ;;
+status)
+        status_of_proc $PID_FILE
+        RETVAL=$?
+        ;;
+restart)
+        $0 stop
+        $0 start
+        RETVAL=$?
+        ;;
+reload)
+        log_daemon_msg "Reloading postomaat config:" "postomaat"
+        kill -HUP `cat $PID_FILE`
+        RETVAL=$?
+        log_end_msg $RETVAL
+        ;;
+
+*)
+        echo "Usage: postomaat {start|stop|status|restart|reload}"
+        exit 1
+esac
+
+exit $RETVAL
