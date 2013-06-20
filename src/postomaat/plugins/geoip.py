@@ -41,7 +41,7 @@ class FuFileCache(object):
         if not hasattr(self,'lastreload'):
             self.lastreload=0
         
-        self._initlocal(**kw)
+        self._initlocal(filename=filename, **kw)
         
         self.reloadifnecessary(filename)
         
@@ -80,7 +80,8 @@ class FuFileCache(object):
 class GeoIPCache(FuFileCache):        
     def _initlocal(self, **kw):
         self.geoip = None
-             
+        self.filename = kw['filename']
+        
         
     def _reallyloadData(self, filename):
         self.geoip = pygeoip.GeoIP(filename)
@@ -149,10 +150,14 @@ class GeoIPPlugin(ScannerPlugin):
             self.logger.error('No client address found')
             return DUNNO
         
-        bl = self.config.get('GeoIP', 'blacklist')
-        blacklist = [i.strip() for i in bl.split(',')]
-        wl = self.config.get('GeoIP', 'whitelist')
-        whitelist = [i.strip() for i in wl.split(',')]
+        bl = self.config.get('GeoIP', 'blacklist').strip()
+        blacklist = []
+        if bl:
+            blacklist = [i.strip() for i in bl.split(',')]
+        wl = self.config.get('GeoIP', 'whitelist').strip()
+        whitelist = []
+        if wl:
+            whitelist = [i.strip() for i in wl.split(',')]
         on_unknown = self.config.get('GeoIP', 'on_unknown')
         unknown = DUNNO
         if on_unknown.strip().upper() == 'REJECT':
@@ -170,10 +175,10 @@ class GeoIPPlugin(ScannerPlugin):
             action = REJECT
             
         if action == REJECT:
-            message = 'this system does not accept mail from your country "%s" - request whitelisting' % cn
+            message = 'this system does not accept mail from servers in your country "%s" - request whitelisting' % cn
             
         return action, message
-         
+        
         
     
     def lint(self):
