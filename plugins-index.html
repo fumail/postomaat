@@ -63,30 +63,8 @@
 <div class="section" id="types-of-responses">
 <h3>Types of responses<a class="headerlink" href="#types-of-responses" title="Permalink to this headline">¶</a></h3>
 <p>Scanner plugins are the most important type of plugins. They do the actual mail content filtering.
-Plugins are run in the order specified in the <tt class="docutils literal"><span class="pre">plugins=</span></tt> configuration option. Each plugin returns an action
-for the message:</p>
-<p>REJECT=&#8221;reject&#8221;
-DEFER=&#8221;defer&#8221;
-DEFER_IF_REJECT=&#8221;defer_if_reject&#8221;
-DEFER_IF_PERMIT=&#8221;defer_if_permit&#8221;
-ACCEPT=&#8221;ok&#8221;
-OK=&#8221;ok&#8221; #same as ACCEPT
-DUNNO=&#8221;dunno&#8221;
-DISCARD=&#8221;discard&#8221;
-FILTER=&#8221;filter&#8221;
-HOLD=&#8221;hold&#8221;
-PREPEND=&#8221;prepend&#8221;
-REDIRECT=&#8221;redirect&#8221;
-WARN=&#8221;warn&#8221;</p>
-<blockquote>
-<div><ul class="simple">
-<li><strong>DUNNO</strong>  : This plugin decides not to take any final action, continue with the next plugin (this is the most common case)</li>
-<li><strong>ACCEPT</strong> : Whitelist this message, don&#8217;t run any remaining plugins</li>
-<li><strong>DELETE</strong> : Silently delete this message (The sender will think it has been delivered)</li>
-<li><strong>DEFER</strong>  : Temporary Reject (4xx error), used for error conditions in after-queue mode or things like greylisting in before-queue mode</li>
-<li><strong>REJECT</strong> : Reject this message, should only be used in before-queue mode (in after-queue mode this would produce a bounce / backscatter)</li>
-</ul>
-</div></blockquote>
+Plugins are run in the order specified in the <tt class="docutils literal"><span class="pre">plugins=</span></tt> configuration option. Each plugin returns a postfix action
+for the message (DUNNO, REJECT, DEFER, DISCARD, HOLD, PREPEND, WARN, ...)</p>
 <p>If one of the plugins returns something other than <em>DUNNO</em>, all remaining plugins are skipped.
 If all plugins return DUNNO, the message is accepted</p>
 </div>
@@ -210,13 +188,6 @@ named like the plugin itself.</p>
 </div>
 </div>
 </div>
-<div class="section" id="debugging">
-<h3>Debugging<a class="headerlink" href="#debugging" title="Permalink to this headline">¶</a></h3>
-<div class="section" id="debug-a-plugin-without-running-postomaat">
-<h4>debug a plugin without running postomaat<a class="headerlink" href="#debug-a-plugin-without-running-postomaat" title="Permalink to this headline">¶</a></h4>
-<p>TODO: document postomaat &#8211;test</p>
-</div>
-</div>
 <div class="section" id="deploying-plugins">
 <h3>Deploying Plugins<a class="headerlink" href="#deploying-plugins" title="Permalink to this headline">¶</a></h3>
 <blockquote>
@@ -255,10 +226,6 @@ named like the plugin itself.</p>
 <li><a class="reference internal" href="#add-headers">add headers</a></li>
 <li><a class="reference internal" href="#write-to-the-log">write to the log</a></li>
 <li><a class="reference internal" href="#make-plugin-lint-able">make plugin &#8216;&#8211;lint&#8217;-able</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#debugging">Debugging</a><ul>
-<li><a class="reference internal" href="#debug-a-plugin-without-running-postomaat">debug a plugin without running postomaat</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#deploying-plugins">Deploying Plugins</a></li>

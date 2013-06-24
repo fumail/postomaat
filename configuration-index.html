@@ -83,6 +83,19 @@
 <p>run <tt class="docutils literal"><span class="pre">postfix</span> <span class="pre">reload</span></tt> and check your maillog for errors. from now on, messages should be filtered by postomaat!</p>
 </div>
 </div>
+<div class="section" id="advanced-configuration">
+<h2>Advanced Configuration<a class="headerlink" href="#advanced-configuration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="running-different-configurations-on-different-ports">
+<h3>Running different configurations on different Ports<a class="headerlink" href="#running-different-configurations-on-different-ports" title="Permalink to this headline">¶</a></h3>
+<p>Running multiple configurations can be handy if you want to make different decisions in other postfix connection stages, for example
+smtpd_client_restrictions and smtpd_recipient_restrictions.</p>
+<p>to run different plugins on different ports, use the &#8220;incomingport&#8221; option in postomaat.configuration. make sure all plugins are being loaded in &#8220;plugins=&#8221;.</p>
+<p>example:</p>
+<div class="highlight-python"><pre>incomingport=9998:plugin1,plugin2,plugin3 9997:plugin2,plugin3(someotherconfigsection)</pre>
+</div>
+<p>This would run plugin1 and plugin2 with their main configuration section on port 9998, but only plugin2 and plugin3 with &#8220;[someotherconfigsection]&#8221; on port 9997.</p>
+</div>
+</div>
 </div>
 
 
@@ -97,6 +110,10 @@
 <li><a class="reference internal" href="#basic-configuration">Basic Configuration</a><ul>
 <li><a class="reference internal" href="#postomaat">Postomaat</a></li>
 <li><a class="reference internal" href="#postfix">Postfix</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced-configuration">Advanced Configuration</a><ul>
+<li><a class="reference internal" href="#running-different-configurations-on-different-ports">Running different configurations on different Ports</a></li>
 </ul>
 </li>
 </ul>
