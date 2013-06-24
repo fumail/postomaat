@@ -1,4 +1,4 @@
-#   Copyright 2012 Oli Schacher
+#   Copyright 2013 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# $Id: core.py 1345 2011-12-09 15:23:23Z oli $
 #
 
 BASENAME="postomaat" #project name (root logger etc)
@@ -399,7 +398,6 @@ class MainController(object):
     def load_plugins(self):
         """load plugins defined in config"""
         
-        newplugins=[]
         allOK=True
 
         plugdir=self.config.get('main', 'plugindir').strip()
