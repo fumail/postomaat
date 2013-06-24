@@ -203,7 +203,9 @@ elif debugmsg:
             print "Warning: %s ignored - unsupported attribute"%key
     print attrs
     action,arg=controller.test(attrs)
-    print "Result: %s %s"%(action,arg)
+    if arg==None:
+        arg=""
+    print "Result: %s %s"%(action.upper(),arg)
 else:
     signal.signal(signal.SIGHUP, sighup)
     controller.startup()
