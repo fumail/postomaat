@@ -14,12 +14,9 @@ The main difference is that postomaat only speaks the postfix's policy access pr
 can not check any header or body content) but it is better suited to act on on envelope data (sender, IP address, reverse dns, TLS parameters etc).
 The simpler protocol makes postomaat faster than fuglu and doesn't require a second postfix instance to "re-inject" the filtered mails.
 
-------------------.---------
-Comparison fuglu / postomaat
-----------------------------
 
 +------------------------+----------------------------------------------------+------------------------------------------------------------------------+
-|                        | Fuglu                                              | Postmaat                                                               |
+|                        | Fuglu                                              | Postomaat                                                              |
 +========================+====================================================+========================================================================+
 | What is scanned        | the mailfile itself                                |all postfix envelope data                                               |
 |                        | envelope sender, envelope recipient, headers, body |(sender,recipient,queueid,sending ip, tls information, sasl_sender, ...)|
