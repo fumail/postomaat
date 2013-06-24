@@ -75,3 +75,33 @@ example:
 This would run plugin1 and plugin2 with their main configuration section on port 9998, but only plugin2 and plugin3 with "[someotherconfigsection]" on port 9997.
 
 
+--------------------------------------
+Testing your configuration & Debugging
+--------------------------------------
+
+Dry-run without actual mail
+...........................
+
+to test your current postomaat plugins you can run `postomaat --test`  and add any parameters as defined in http://www.postfix.org/SMTPD_POLICY_README.html#protocol
+
+for example, to simulate a message from foo@bar.com to bar@foo.com coming from IP 1.3.3.7 you would run:
+
+::
+
+  postomaat --test sender=foo@bar.com recipient=bar@foo.com client_address=1.3.3.7
+  
+Postomaat will automatically add default values for all other fields and display the result.
+
+Additionally, you can pass the `--debug` argument to print out all debug messages.
+
+
+Postomaat doesn't even start
+............................
+
+ * run ``postomaat --lint`` as root. are there any errors?
+ * did you create /etc/postomaat/logging.conf (by renaming the logging.conf.dist file) ?
+ * check for errors in yourmaillog
+ * run postomaat in foreground by setting ``daemonize=0`` in postomaat.conf
+
+
+

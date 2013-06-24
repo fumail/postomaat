@@ -25,9 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="postomaat 1 documentation" href="index.html" />
-    <link rel="next" title="Plugins" href="plugins-index.html" />
-    <link rel="prev" title="Configuration" href="configuration-index.html" /> 
+    <link rel="top" title="postomaat 1 documentation" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -36,12 +34,6 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="plugins-index.html" title="Plugins"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="configuration-index.html" title="Configuration"
-             accesskey="P">previous</a> |</li>
         <li><a href="index.html">postomaat 1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
@@ -61,29 +53,6 @@
 <h2>Monitoring<a class="headerlink" href="#monitoring" title="Permalink to this headline">¶</a></h2>
 <p>TODO</p>
 </div>
-<div class="section" id="troubleshooting-testing-debugging">
-<h2>Troubleshooting, Testing &amp; Debugging<a class="headerlink" href="#troubleshooting-testing-debugging" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="testing-your-configuration-plugins">
-<h3>Testing your configuration/plugins<a class="headerlink" href="#testing-your-configuration-plugins" title="Permalink to this headline">¶</a></h3>
-<p>to test your current postomaat plugins you can run <cite>postomaat &#8211;test</cite>  and add any parameters as defined in <a class="reference external" href="http://www.postfix.org/SMTPD_POLICY_README.html#protocol">http://www.postfix.org/SMTPD_POLICY_README.html#protocol</a></p>
-<p>for example, to simulate a message from <a class="reference external" href="mailto:foo&#37;&#52;&#48;bar&#46;com">foo<span>&#64;</span>bar<span>&#46;</span>com</a> to <a class="reference external" href="mailto:bar&#37;&#52;&#48;foo&#46;com">bar<span>&#64;</span>foo<span>&#46;</span>com</a> coming from IP 1.3.3.7 you would run:</p>
-<div class="highlight-python"><pre>postomaat --test sender=foo@bar.com recipient=bar@foo.com client_address=1.3.3.7</pre>
-</div>
-<p>Postomaat will automatically add default values for all other fields and display the result.</p>
-<p>Additionally, you can pass the <cite>&#8211;debug</cite> argument to print out all debug messages.</p>
-<div class="section" id="postomaat-doesn-t-even-start">
-<h4>Postomaat doesn&#8217;t even start<a class="headerlink" href="#postomaat-doesn-t-even-start" title="Permalink to this headline">¶</a></h4>
-<blockquote>
-<div><ul class="simple">
-<li>run <tt class="docutils literal"><span class="pre">postomaat</span> <span class="pre">--lint</span></tt> as root. are there any errors?</li>
-<li>did you create /etc/postomaat/logging.conf (by renaming the logging.conf.dist file) ?</li>
-<li>check for errors in yourmaillog</li>
-<li>run postomaat in foreground by setting <tt class="docutils literal"><span class="pre">daemonize=0</span></tt> in postomaat.conf</li>
-</ul>
-</div></blockquote>
-</div>
-</div>
-</div>
 </div>
 
 
@@ -96,23 +65,10 @@
   <ul>
 <li><a class="reference internal" href="#">Operation</a><ul>
 <li><a class="reference internal" href="#monitoring">Monitoring</a></li>
-<li><a class="reference internal" href="#troubleshooting-testing-debugging">Troubleshooting, Testing &amp; Debugging</a><ul>
-<li><a class="reference internal" href="#testing-your-configuration-plugins">Testing your configuration/plugins</a><ul>
-<li><a class="reference internal" href="#postomaat-doesn-t-even-start">Postomaat doesn&#8217;t even start</a></li>
-</ul>
-</li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="configuration-index.html"
-                        title="previous chapter">Configuration</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="plugins-index.html"
-                        title="next chapter">Plugins</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/operation-index.txt"
@@ -141,12 +97,6 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
-        <li class="right" >
-          <a href="plugins-index.html" title="Plugins"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="configuration-index.html" title="Configuration"
-             >previous</a> |</li>
         <li><a href="index.html">postomaat 1 documentation</a> &raquo;</li> 
       </ul>
     </div>

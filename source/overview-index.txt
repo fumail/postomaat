@@ -6,23 +6,26 @@ Overview
 
 
 Postomaat is a postfix policy daemon written in python. It allows to accept/reject/defer/... messages using the smtp policy access delegation protocol described in http://www.postfix.org/SMTPD_POLICY_README.html
+Its simple plugin architecture allows extending functionality easily (basic python skills required).
 
 
-Postomaat's simple plugin architecture allows extending functionality easily (basic python skills required).
+Postomaat is a by-product of the fuglu mail content scanner. It uses the same engine and a similar configuration scheme.
+The main difference is that postomaat only speaks the postfix's policy access protocol. Postomaat does not see any mail content (so it
+can not check any header or body content) but it is better suited to act on on envelope data (sender, IP address, reverse dns, TLS parameters etc).
+The simpler protocol makes postomaat faster than fuglu and doesn't require a second postfix instance to "re-inject" the filtered mails.
 
+------------------.---------
+Comparison fuglu / postomaat
+----------------------------
 
---------
-Features
---------
-
-TODO
-
-
-
-
-
-
-
-
-
++------------------------+----------------------------------------------------+------------------------------------------------------------------------+
+|                        | Fuglu                                              | Postmaat                                                               |
++========================+====================================================+========================================================================+
+| What is scanned        | the mailfile itself                                |all postfix envelope data                                               |
+|                        | envelope sender, envelope recipient, headers, body |(sender,recipient,queueid,sending ip, tls information, sasl_sender, ...)|
++------------------------+----------------------------------------------------+------------------------------------------------------------------------+
+| protocols              | smtp(after queue),esmtp(before queue),milter,netcat|postfix policy access                                                   |                   
++------------------------+----------------------------------------------------+------------------------------------------------------------------------+
+| main usage             | content filtering(antispam,antivirus,attachment,...|client filtering (greylisting, SPF,  geo-ip blocks,...)                 |
++------------------------+----------------------------------------------------+------------------------------------------------------------------------+
 

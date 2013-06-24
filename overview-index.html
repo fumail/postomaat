@@ -57,12 +57,44 @@
 <ul class="simple">
 </ul>
 </div>
-<p>Postomaat is a postfix policy daemon written in python. It allows to accept/reject/defer/... messages using the smtp policy access delegation protocol described in <a class="reference external" href="http://www.postfix.org/SMTPD_POLICY_README.html">http://www.postfix.org/SMTPD_POLICY_README.html</a></p>
-<p>Postomaat&#8217;s simple plugin architecture allows extending functionality easily (basic python skills required).</p>
-<div class="section" id="features">
-<h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
-<p>TODO</p>
-</div>
+<p>Postomaat is a postfix policy daemon written in python. It allows to accept/reject/defer/... messages using the smtp policy access delegation protocol described in <a class="reference external" href="http://www.postfix.org/SMTPD_POLICY_README.html">http://www.postfix.org/SMTPD_POLICY_README.html</a>
+Its simple plugin architecture allows extending functionality easily (basic python skills required).</p>
+<p>Postomaat is a by-product of the fuglu mail content scanner. It uses the same engine and a similar configuration scheme.
+The main difference is that postomaat only speaks the postfix&#8217;s policy access protocol. Postomaat does not see any mail content (so it
+can not check any header or body content) but it is better suited to act on on envelope data (sender, IP address, reverse dns, TLS parameters etc).
+The simpler protocol makes postomaat faster than fuglu and doesn&#8217;t require a second postfix instance to &#8220;re-inject&#8221; the filtered mails.</p>
+<p>&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;.&#8212;&#8212;&#8212;
+Comparison fuglu / postomaat
+&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="16%" />
+<col width="35%" />
+<col width="49%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">&nbsp;</th>
+<th class="head">Fuglu</th>
+<th class="head">Postmaat</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>What is scanned</td>
+<td>the mailfile itself
+envelope sender, envelope recipient, headers, body</td>
+<td>all postfix envelope data
+(sender,recipient,queueid,sending ip, tls information, sasl_sender, ...)</td>
+</tr>
+<tr class="row-odd"><td>protocols</td>
+<td>smtp(after queue),esmtp(before queue),milter,netcat</td>
+<td>postfix policy access</td>
+</tr>
+<tr class="row-even"><td>main usage</td>
+<td>content filtering(antispam,antivirus,attachment,...</td>
+<td>client filtering (greylisting, SPF,  geo-ip blocks,...)</td>
+</tr>
+</tbody>
+</table>
 </div>
 
 
@@ -71,14 +103,6 @@
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Overview</a><ul>
-<li><a class="reference internal" href="#features">Features</a></li>
-</ul>
-</li>
-</ul>
-
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
                         title="previous chapter">Postomaat Postfix Policy Daemon</a></p>
