@@ -6,7 +6,7 @@ identifier=dist
 
 #run as a daemon? (fork)
 #default: 1
-daemonize=0
+daemonize=1
 
 #run as user
 user=nobody
