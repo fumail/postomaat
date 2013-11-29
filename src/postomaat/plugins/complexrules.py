@@ -8,6 +8,7 @@
 #IDEA: operator "blacklistlookup"
 
 from postomaat.shared import ScannerPlugin,DUNNO
+from pyparsing import Optional
 PYPARSING_AVAILABLE=False
 try:
     from pyparsing import infixNotation, opAssoc, Keyword, Word, alphas,oneOf,nums,alphas,Literal,restOfLine,ParseException,QuotedString
@@ -35,7 +36,7 @@ if PYPARSING_AVAILABLE:
 
 class ValueChecker(object):
 
-    def __init__(self,values,pfixname,op,checkval):
+    def __init__(self,values,pfixname,op,checkval,modifiers=None):
         self.debug=True
         self.pfixname=pfixname
         self.op=op
@@ -44,6 +45,7 @@ class ValueChecker(object):
         self.values=values #all values
         self.value=self.get_value() # the requested value
         self.logger=logging.getLogger('postomaat.complexrules.valuecheck')
+        self.modifiers=modifiers
         self.funcs={
          '==':self.fn_equals,
          '!=':self.fn_notequals, 
@@ -86,11 +88,22 @@ class ValueChecker(object):
     
     def fn_regexmatches(self):
         v=str(self.value)
+        reflags=0
+        if self.modifiers!=None:
+            for flag in self.modifiers:
+                flag=flag.lower()
+                if flag=='i':
+                    reflags|=re.I
+                elif flag=='m':
+                    reflags|=re.M
+                else:
+                    self.logger.warn("unknown/unsupported regex flag '%s' - ignoring this flag"%(flag))
+        
         try:
-            match= re.search(self.checkval, v)
+            match= re.search(self.checkval, v,reflags)
         except Exception,e:
             logging.error(e)
-        return match!=None # TODO: how do we get modifiers
+        return match!=None
     
     def __bool__(self):
         func= self.funcs[self.op]
@@ -139,7 +152,7 @@ class BoolNot(object):
 if PYPARSING_AVAILABLE:
     PF_KEYWORD=oneOf(postfixfields)
     intnum = Word(nums).setParseAction( lambda s,l,t: [ int(t[0]) ] )
-    charstring=QuotedString(quoteChar='"') | QuotedString(quoteChar="'") | QuotedString(quoteChar='/')
+    charstring=QuotedString(quoteChar='"') | QuotedString(quoteChar="'") | (QuotedString(quoteChar='/') + Optional(Word("im")))
     AttOperand= charstring | intnum
 
 
@@ -154,10 +167,18 @@ def makeparser(values):
         ])
     
     def evalResult(loc,pos,tokens):
-        pfixname,op,checkval=tokens
+        modifiers=None
+        
+        l=len(tokens)
+        if l==3:
+            pfixname,op,checkval=tokens
+        elif l==4:
+            pfixname,op,checkval,modifiers=tokens
+        else:
+            logging.error("Parser error, got unexpected token amount, tokens=%s"%tokens)
         #print "checking %s %s %s"%(pfixname,op,checkval)
         
-        return ValueChecker(values,pfixname,op,checkval)
+        return ValueChecker(values,pfixname,op,checkval,modifiers)
 
     SimpleExpression.setParseAction(evalResult)
     #SimpleExpression.setDebug()
@@ -330,9 +351,9 @@ if __name__=='__main__':
     print "Load Rules:\n----"
     rules="""
 reverse_client_name == "unknown" && helo_name=="21cn.com" REJECT go away! 
-reverse_client_name == "unknown" && helo_name~=/^\[[0-9a-fA-F:.]+\]$/ REJECT No FcrDNS and address literal HELO - Who are you?
+reverse_client_name == "unknown" && helo_name~=/^\[[0-9a-fA-F:.]+\]$/im REJECT No FcrDNS and address literal HELO - Who are you?
 
-sender=='ex_8@girlfriends.com' && (size<100 || size>20000) REJECT say something.. but not everything
+sender~=/^EX_.+@girlfriends.com/i && (size<100 || size>20000) REJECT say something.. but not everything
 """
     print rules
     
