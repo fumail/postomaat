@@ -1,0 +1,360 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+from postomaat.shared import ScannerPlugin,DUNNO
+PYPARSING_AVAILABLE=False
+try:
+    from pyparsing import infixNotation, opAssoc, Keyword, Word, alphas,oneOf,nums,alphas,Literal,restOfLine,ParseException,QuotedString
+    PYPARSING_AVAILABLE=True
+except ImportError:
+    pass
+
+import logging
+import re
+import os
+import time
+
+#allowed keywords at start of line
+postfixfields = ["smtpd_access_policy" , "protocol_state" , "protocol_name" , "helo_name",  "queue_id" , "sender" ,  "recipient" , "recipient_count" , "client_address" , "client_name" , "reverse_client_name" , "instance"  , "sasl_method" , "sasl_username" , "sasl_sender" , "size" , "ccert_subject" , "ccert_fingerprint" , "encryption_protocol" , "encryption_cipher" , "encryption_keysize" , "etrn_domain" , "stress" , "ccert_pubkey_fingerprint"]
+
+#what keywords return a integer value
+numeric=['size','encryption_keysize','recipient_count']
+
+if PYPARSING_AVAILABLE:
+    #allowed operators
+    AttOperator=oneOf("== != ~= > <")
+    
+    #allowed actions
+    ACTION = oneOf("DUNNO REJECT DEFER WARN OK DISCARD FILTER HOLD PREPEND REDIRECT")
+
+class ValueChecker(object):
+
+    def __init__(self,values,pfixname,op,checkval):
+        self.debug=True
+        self.pfixname=pfixname
+        self.op=op
+        self.checkval=checkval
+        self.label="check(%s %s %s)"%(pfixname,op,checkval)
+        self.values=values #all values
+        self.value=self.get_value() # the requested value
+        self.logger=logging.getLogger('postomaat.complexrules.valuecheck')
+        self.funcs={
+         '==':self.fn_equals,
+         '!=':self.fn_notequals, 
+         '~=':self.fn_regexmatches,
+         '<':self.fn_lt,
+         '>':self.fn_gt,   
+        }
+        
+    def get_value(self,name=None,defval=None):
+        if name==None:
+            name=self.pfixname
+            
+        if name not in self.values:
+            return defval
+        return self.values[name]
+    
+    def fn_equals(self):
+        return self.value==self.checkval
+
+    def fn_notequals(self):
+        return self.value!=self.checkval
+    
+    def fn_gt(self):
+        if self.pfixname not in numeric:
+            self.logger.warn("can not use use < and > comparison operator on non-numeric value %s"%self.pfixname)
+            return False
+        if self.value==None:
+            return False
+        numval=int(self.value)
+        return numval>self.checkval
+    
+    def fn_lt(self):
+        if self.pfixname not in numeric:
+            self.logger.warn("can not use use < and > comparison operator on non-numeric value %s"%self.pfixname)
+            return False
+        if self.value==None:
+            return False
+        numval=int(self.value)
+        return numval<self.checkval
+    
+    def fn_regexmatches(self):
+        v=str(self.value)
+        try:
+            match= re.search(self.checkval, v)
+        except Exception,e:
+            logging.error(e)
+        return match!=None # TODO: how do we get modifiers
+    
+    def __bool__(self):
+        func= self.funcs[self.op]
+        res=func()
+        self.logger.debug("%s %s %s ? : %s"%(self.pfixname,self.op,self.checkval,res))
+        return res
+        
+    
+    def __str__(self):
+        return self.label
+    __repr__ = __str__
+    __nonzero__ = __bool__
+
+
+class BoolBinOp(object):
+    def __init__(self,t):
+        self.args = t[0][0::2]
+    def __str__(self):
+        sep = " %s " % self.reprsymbol
+        return "(" + sep.join(map(str,self.args)) + ")"
+    def __bool__(self):
+        return self.evalop(bool(a) for a in self.args)
+    __nonzero__ = __bool__
+    __repr__ = __str__
+
+class BoolAnd(BoolBinOp):
+    reprsymbol = '&&'
+    evalop = all
+
+class BoolOr(BoolBinOp):
+    reprsymbol = ',,'
+    evalop = any
+
+class BoolNot(object):
+    def __init__(self,t):
+        self.arg = t[0][1]
+    def __bool__(self):
+        v = bool(self.arg)
+        return not v
+    def __str__(self):
+        return "!" + str(self.arg)
+    __repr__ = __str__
+    __nonzero__ = __bool__
+
+
+if PYPARSING_AVAILABLE:
+    PF_KEYWORD=oneOf(postfixfields)
+    intnum = Word(nums).setParseAction( lambda s,l,t: [ int(t[0]) ] )
+    charstring=QuotedString(quoteChar='"') | QuotedString(quoteChar="'") | QuotedString(quoteChar='/')
+    AttOperand= charstring | intnum
+
+
+def makeparser(values):
+    SimpleExpression = PF_KEYWORD('pfvalue') + AttOperator('operator') + AttOperand('testvalue')
+        
+    booleanrule = infixNotation( SimpleExpression,
+        [
+        ("!", 1, opAssoc.RIGHT, BoolNot),
+        ("&&", 2, opAssoc.LEFT,  BoolAnd),
+        ("||",  2, opAssoc.LEFT,  BoolOr),
+        ])
+    
+    def evalResult(loc,pos,tokens):
+        pfixname,op,checkval=tokens
+        #print "checking %s %s %s"%(pfixname,op,checkval)
+        
+        return ValueChecker(values,pfixname,op,checkval)
+
+    SimpleExpression.setParseAction(evalResult)
+    #SimpleExpression.setDebug()
+    configline=booleanrule + ACTION + restOfLine
+    return configline
+
+
+class ComplexRuleParser(object):
+    def __init__(self):
+        self.rules=[]
+        self.logger=logging.getLogger('postomaat.complexruleparser')
+    
+    def add_rule(self,rule):
+        try:
+            _=makeparser({}).parseString(rule)  #test
+            self.rules.append(rule)
+            return True
+        except ParseException as pe:
+            self.logger.error("Could not parse rule -->%s<-- "%rule)
+            self.logger.error(str(pe))
+        return False
+    
+    def clear_rules(self):
+        self.rules=[]
+        
+    def rules_from_string(self,all_rules):
+        if all_rules==None:
+            return
+        all_ok=True
+        for line in all_rules.splitlines():
+            line=line.strip()
+            if line=='' or line.startswith('#'):
+                continue
+            if not self.add_rule(line):
+                all_ok=False
+                
+        return all_ok
+
+    def apply(self,values):
+        for rule in self.rules:
+            try:
+                parsetree=makeparser(values).parseString(rule)  #test
+                
+                checkrule,action,message=parsetree
+                bmatch=bool(checkrule)
+                #debug
+                #print "rule=%s match=%s action=%s message=%s msg=%s"%(checkrule,bmatch,action,message,values)
+                if bmatch:
+                    return action,message.strip()
+            except ParseException as pe:
+                self.logger.warning("""Could not apply rule "%s" to message %s """%(rule,values))
+                self.logger.warning(str(pe))
+        return "DUNNO",''
+
+
+
+class FileReloader(object):
+    def __init__(self,filename):
+        self.filename=filename
+        self.content=[]
+        
+        self.reloadinterval=30
+        self.lastreload=0
+        self.logger=logging.getLogger('postomaat.complexfilereloader')
+        self.content=None
+        if filename!=None:
+            self.reloadifnecessary()
+        
+        
+    def reloadifnecessary(self):
+        now=time.time()
+        #check if reloadinterval has passed
+        if now-self.lastreload<self.reloadinterval:
+            return False
+        if self.filechanged():
+            self._reload()
+            return True
+        return False
+    
+    def filechanged(self):
+        if self.filename==None:
+            return False
+        statinfo=os.stat(self.filename)
+        ctime=statinfo.st_ctime
+        if ctime>self.lastreload:
+            return True
+        return False  
+
+    def _reload(self):
+        self.logger.info('Reloading rule file %s'%self.filename)
+        statinfo=os.stat(self.filename)
+        ctime=statinfo.st_ctime
+        self.lastreload=ctime
+        fp=open(self.filename,'r')
+        content=fp.read()
+        self.content=content
+
+
+class ComplexRules(ScannerPlugin):
+    """ """
+    def __init__(self,config,section=None):
+        ScannerPlugin.__init__(self,config,section)
+        self.logger=self._logger()
+        self.requiredvars={
+            'filename':{
+                'default':'/etc/postomaat/complexrules.cf',
+                'description':'File containing rules',
+            },
+        }
+        self.ruleparser=ComplexRuleParser()
+        self.filereloader=FileReloader(None)
+        
+    def examine(self,suspect):        
+        filename=self.config.get(self.section,'filename').strip()
+        if not os.path.exists(filename):
+            self.logger.error("Rulefile %s does not exist"%filename)
+            return DUNNO,''
+        self.filereloader.filename=filename
+        newcontent=self.filereloader.reloadifnecessary()
+        if newcontent:
+            self.ruleparser.clear_rules()
+            self.ruleparser.rules_from_string(self.filereloader.content)
+        
+        retaction,retmessage=self.ruleparser.apply(suspect.values)
+        
+        return retaction,retmessage
+
+    def lint(self):
+        if not PYPARSING_AVAILABLE:
+            print "pyparsing is not installed, can not use complex rules"
+            return False
+        
+        
+        
+        if not self.checkConfig():
+            print 'Error checking config'
+            return False
+
+        filename=self.config.get(self.section,'filename').strip()
+        if not os.path.exists(filename):
+            print "Rulefile %s does not exist"%filename
+            return False
+        
+        self.filereloader.filename=filename
+        newcontent=self.filereloader.reloadifnecessary()
+        assert newcontent
+        
+        self.ruleparser.clear_rules()
+        return self.ruleparser.rules_from_string(self.filereloader.content)
+
+                        
+    def __str__(self):
+        return "Complex Rules"
+
+
+
+
+if __name__=='__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    c=ComplexRuleParser()
+    print "Load Rules:\n----"
+    rules="""
+reverse_client_name == "unknown" && helo_name=="21cn.com" REJECT go away! 
+reverse_client_name == "unknown" && helo_name~=/^\[[0-9a-fA-F:.]+\]$/ REJECT No FcrDNS and address literal HELO - Who are you?
+
+sender=='ex_8@girlfriends.com' && (size<100 || size>20000) REJECT say something.. but not everything
+"""
+    print rules
+    
+    c.rules_from_string(rules)
+    print "----"
+    print "%s rules loaded"%(len(c.rules))
+    print "Tests:"
+    message1={'reverse_client_name':'unknown','helo_name':'21cn.com'}
+    message2={'reverse_client_name':'unknown','helo_name':'gmail.com','size':'5000'}
+    message3={'reverse_client_name':'bla.com','helo_name':'21cn.com'}
+    addr_literal={'reverse_client_name':'unknown','helo_name':'[1.3.3.7]'}
+    small_message={'size':'5','sender':'ex_8@girlfriends.com'}
+    large_message={'size':'100000','sender':'ex_8@girlfriends.com'}
+    medium_message={'size':'300','sender':'ex_8@girlfriends.com'}
+    tests=[
+     (message1,'REJECT','go away!'),  
+     (message2,'DUNNO',''),      
+     (message3,'DUNNO',''), 
+     (addr_literal,'REJECT','No FcrDNS and address literal HELO - Who are you?'),
+     (small_message,'REJECT','say something.. but not everything'),
+     (large_message,'REJECT','say something.. but not everything'),
+     (medium_message,'DUNNO',''),
+    ]
+    
+    for test in tests:
+        msg,expaction,expmessage=test
+        print ""
+        print "Testing message: %s..."%msg
+        retaction,retmessage=c.apply(msg)
+        if retaction==expaction and retmessage==expmessage:
+            print "Test OK (%s %s)"%(retaction,retmessage)
+        else:
+            print "FAIL! : Expected '%s %s' got '%s %s'"%(expaction,expmessage,retaction,retmessage)
+    
+   
+    
+    
+    
+        
+    
+    
