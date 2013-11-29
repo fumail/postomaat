@@ -1,5 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
+#TODO: do we need a "does not match regex" operator? (can curently be written as !bla=~/blubb/
+#TODO: regex modifiers
+
+#IDEA: pseudo field "senderdomain"
+#IDEA: operator "blacklistlookup"
+
 from postomaat.shared import ScannerPlugin,DUNNO
 PYPARSING_AVAILABLE=False
 try:
@@ -264,6 +271,9 @@ class ComplexRules(ScannerPlugin):
         self.filereloader=FileReloader(None)
         
     def examine(self,suspect):        
+        if not PYPARSING_AVAILABLE:
+            return DUNNO,''
+        
         filename=self.config.get(self.section,'filename').strip()
         if not os.path.exists(filename):
             self.logger.error("Rulefile %s does not exist"%filename)
@@ -272,7 +282,13 @@ class ComplexRules(ScannerPlugin):
         newcontent=self.filereloader.reloadifnecessary()
         if newcontent:
             self.ruleparser.clear_rules()
-            self.ruleparser.rules_from_string(self.filereloader.content)
+            reloadok=self.ruleparser.rules_from_string(self.filereloader.content)
+            numrules=len(self.ruleparser.rules)
+            if reloadok:
+                okmsg="all rules ok"
+            else:
+                okmsg="some rules failed to load"
+            self.logger.info("Rule reload complete, %s rules now active, (%s)"%(numrules,okmsg))
         
         retaction,retmessage=self.ruleparser.apply(suspect.values)
         
@@ -299,14 +315,14 @@ class ComplexRules(ScannerPlugin):
         assert newcontent
         
         self.ruleparser.clear_rules()
-        return self.ruleparser.rules_from_string(self.filereloader.content)
+        ok= self.ruleparser.rules_from_string(self.filereloader.content)
+        rulecount=len(self.ruleparser.rules)
+        print "%s rules ok"%(rulecount)
+        return ok
 
                         
     def __str__(self):
         return "Complex Rules"
-
-
-
 
 if __name__=='__main__':
     logging.basicConfig(level=logging.DEBUG)
