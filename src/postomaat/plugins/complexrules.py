@@ -227,6 +227,8 @@ class ComplexRuleParser(object):
                 #debug
                 #print "rule=%s match=%s action=%s message=%s msg=%s"%(checkrule,bmatch,action,message,values)
                 if bmatch:
+                    logmsg="postomaat-rulehit: sender=%s recipient=%s rule=%s %s %s"%(values.get('sender'),values.get('recipient'),checkrule,action,message)
+                    self.logger.info(logmsg)
                     return action,message.strip()
             except ParseException as pe:
                 self.logger.warning("""Could not apply rule "%s" to message %s """%(rule,values))
@@ -312,7 +314,6 @@ class ComplexRules(ScannerPlugin):
             self.logger.info("Rule reload complete, %s rules now active, (%s)"%(numrules,okmsg))
         
         retaction,retmessage=self.ruleparser.apply(suspect.values)
-        
         return retaction,retmessage
 
     def lint(self):
