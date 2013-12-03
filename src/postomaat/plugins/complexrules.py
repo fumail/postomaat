@@ -41,7 +41,7 @@ class ValueChecker(object):
         self.pfixname=pfixname
         self.op=op
         self.checkval=checkval
-        self.label="check(%s %s %s)"%(pfixname,op,checkval)
+        self.label="%s %s %s"%(pfixname,op,checkval)
         self.values=values #all values
         self.value=self.get_value() # the requested value
         self.logger=logging.getLogger('postomaat.complexrules.valuecheck')
