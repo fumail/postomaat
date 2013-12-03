@@ -150,7 +150,7 @@ if os.path.isdir(dconfdir):
 
 daemon=DaemonStuff('/var/run/postomaat.pid')
 #we could have an empty config file
-if  not lint: #no daemon for lint
+if  not (lint or debugmsg): #no daemon for lint
     if config.has_option('main', 'daemonize'):
         if config.getboolean('main', 'daemonize'):
             daemon.createDaemon()
