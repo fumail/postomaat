@@ -7,7 +7,8 @@
 #IDEA: pseudo field "senderdomain"
 #IDEA: operator "blacklistlookup"
 
-from postomaat.shared import ScannerPlugin,DUNNO
+from postomaat.shared import ScannerPlugin,DUNNO,REJECT,DEFER,DEFER_IF_REJECT,DEFER_IF_PERMIT,OK,DISCARD,FILTER,HOLD,PREPEND,REDIRECT,WARN
+
 from pyparsing import Optional
 PYPARSING_AVAILABLE=False
 try:
@@ -20,6 +21,7 @@ import logging
 import re
 import os
 import time
+import string
 
 #allowed keywords at start of line
 postfixfields = ["smtpd_access_policy" , "protocol_state" , "protocol_name" , "helo_name",  "queue_id" , "sender" ,  "recipient" , "recipient_count" , "client_address" , "client_name" , "reverse_client_name" , "instance"  , "sasl_method" , "sasl_username" , "sasl_sender" , "size" , "ccert_subject" , "ccert_fingerprint" , "encryption_protocol" , "encryption_cipher" , "encryption_keysize" , "etrn_domain" , "stress" , "ccert_pubkey_fingerprint"]
@@ -32,7 +34,7 @@ if PYPARSING_AVAILABLE:
     AttOperator=oneOf("== != ~= > <")
     
     #allowed actions
-    ACTION = oneOf("DUNNO REJECT DEFER WARN OK DISCARD FILTER HOLD PREPEND REDIRECT")
+    ACTION = oneOf(map(string.upper, [DUNNO,REJECT,DEFER,DEFER_IF_REJECT,DEFER_IF_PERMIT,OK,DISCARD,FILTER,HOLD,PREPEND,REDIRECT,WARN]))
 
 class ValueChecker(object):
 
@@ -233,7 +235,7 @@ class ComplexRuleParser(object):
             except ParseException as pe:
                 self.logger.warning("""Could not apply rule "%s" to message %s """%(rule,values))
                 self.logger.warning(str(pe))
-        return "DUNNO",''
+        return DUNNO,''
 
 
 
@@ -384,6 +386,7 @@ sender~=/^EX_.+@girlfriends.com/i && (size<100 || size>20000) REJECT say somethi
         print ""
         print "Testing message: %s..."%msg
         retaction,retmessage=c.apply(msg)
+        retaction=retaction.upper()
         if retaction==expaction and retmessage==expmessage:
             print "Test OK (%s %s)"%(retaction,retmessage)
         else:
