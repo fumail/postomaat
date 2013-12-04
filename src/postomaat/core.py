@@ -103,7 +103,8 @@ class SessionHandler(object):
                 
                 if result==None:
                     result=DUNNO
-                    
+                else:
+                    result=result.strip().lower()
                 self.action=result
                 self.arg=arg
                 suspect.tags['decisions'].append((str(plugin),result))
