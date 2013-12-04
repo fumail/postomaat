@@ -16,5 +16,5 @@
 # regex can be compiled case insensitive by adding i after the closing slash
 #
 # Example
-# reverse_client_name == "unknown" && helo_name~=/^\[[0-9a-fA-F:.]+\]$/ REJECT No FcrDNS and address literal HELO - Who are you?
+# client_name == "unknown" && helo_name~=/^\[[0-9a-fA-F:.]+\]$/ REJECT No FcrDNS and address literal HELO - Who are you?
 
