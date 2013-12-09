@@ -198,7 +198,7 @@ class ComplexRuleParser(object):
             _=makeparser({}).parseString(rule)  #test
             self.rules.append(rule)
             return True
-        except ParseException as pe:
+        except ParseException,pe:
             self.logger.error("Could not parse rule -->%s<-- "%rule)
             self.logger.error(str(pe))
         return False
