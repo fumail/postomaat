@@ -232,7 +232,7 @@ class ComplexRuleParser(object):
                     logmsg="postomaat-rulehit: sender=%s recipient=%s rule=%s %s %s"%(values.get('sender'),values.get('recipient'),checkrule,action,message)
                     self.logger.info(logmsg)
                     return action,message.strip()
-            except ParseException as pe:
+            except ParseException,pe:
                 self.logger.warning("""Could not apply rule "%s" to message %s """%(rule,values))
                 self.logger.warning(str(pe))
         return DUNNO,''
