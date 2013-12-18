@@ -48,7 +48,7 @@ class SPFPlugin(ScannerPlugin):
         
         client_address=suspect.get_value('client_address')
         if client_address is None:
-            self.logger.error('No client address found')
+            self.logger.info('No client address found')
             return DUNNO
         if have_netaddr:
             ip_whitelist=self.config.get('SPFPlugin','ip_whitelist')
@@ -62,7 +62,12 @@ class SPFPlugin(ScannerPlugin):
             self.logger.warning('No RCPT address found')
             return DEFER_IF_PERMIT,'internal policy error (no from address)'
         sender_email = strip_address(sender)
-        sender_domain = extract_domain(sender_email)
+        try:
+            sender_domain = extract_domain(sender_email)
+        except ValueError as e:
+            self.logger.warning(str(e))
+            return DUNNO
+            
         domain_whitelist=self.config.get('SPFPlugin','domain_whitelist')
         domain_whitelist=[i.strip() for i in domain_whitelist.split(',')]
         if sender_domain in domain_whitelist:
