@@ -15,15 +15,19 @@ import os
 
 from postomaat.shared import ScannerPlugin, DUNNO, REJECT
 
+LIB_GEOIP_NONE = 0
+LIB_GEOIP_PYGEOIP = 1
+LIB_GEOIP_MAXMIND = 2
+
 try:
     import pygeoip
-    have_geoip = 1
+    have_geoip = LIB_GEOIP_PYGEOIP
 except:
     try:
         import GeoIP
-        have_geoip = 2
+        have_geoip = LIB_GEOIP_MAXMIND
     except:
-        have_geoip = 0
+        have_geoip = LIB_GEOIP_NONE
 
 
 class FuFileCache(object):
@@ -152,15 +156,15 @@ class GeoIPPlugin(ScannerPlugin):
         
         
     def examine(self,suspect):
-        if have_geoip == 0:
+        if have_geoip == LIB_GEOIP_NONE:
             return DUNNO
         
         database = self.config.get('GeoIP', 'database')
         if not os.path.exists(database):
             return DUNNO
-        if not self.geoip and have_geoip == 1:
+        if not self.geoip and have_geoip == LIB_GEOIP_PYGEOIP:
             self.geoip = PyGeoIPCache(database)
-        elif not self.geoip and have_geoip == 2:
+        elif not self.geoip and have_geoip == LIB_GEOIP_MAXMIND:
             self.geoip = GeoIPCache(database)
         
         client_address=suspect.get_value('client_address')
@@ -202,12 +206,12 @@ class GeoIPPlugin(ScannerPlugin):
     def lint(self):
         lint_ok = True
         
-        if have_geoip == 0:
+        if have_geoip == LIB_GEOIP_NONE:
             print 'No geoip module installed - this plugin will do nothing'
             lint_ok = False
-        elif have_geoip == 1:
+        elif have_geoip == LIB_GEOIP_PYGEOIP:
             print 'using pygeoip'
-        elif have_geoip == 2:
+        elif have_geoip == LIB_GEOIP_MAXMIND:
             print 'using maxmind geoip'
         
             
