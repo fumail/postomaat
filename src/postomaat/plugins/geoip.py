@@ -17,17 +17,18 @@ from postomaat.shared import ScannerPlugin, DUNNO, REJECT
 
 try:
     import pygeoip
-    have_geoip = True
+    have_geoip = 1
 except:
-    have_geoip = False
+    try:
+        import GeoIP
+        have_geoip = 2
+    except:
+        have_geoip = 0
 
 
 class FuFileCache(object):
     __shared_state = {}
             
-    def _initlocal(self, **kw):
-        pass
-    
     def _reallyloadData(self, filename):
         raise NotImplementedError()
 
@@ -40,8 +41,6 @@ class FuFileCache(object):
             self.logger=logging.getLogger(str(self))
         if not hasattr(self,'lastreload'):
             self.lastreload=0
-        
-        self._initlocal(filename=filename, **kw)
         
         self.reloadifnecessary(filename)
         
@@ -77,10 +76,11 @@ class FuFileCache(object):
         
         
         
-class GeoIPCache(FuFileCache):        
-    def _initlocal(self, **kw):
+class PyGeoIPCache(FuFileCache):        
+    def __init__(self, filename, **kw):
+        FuFileCache.__init__(self, filename, **kw)
         self.geoip = None
-        self.filename = kw['filename']
+        self.filename = filename
         
         
     def _reallyloadData(self, filename):
@@ -104,7 +104,23 @@ class GeoIPCache(FuFileCache):
             country = pygeoip.const.COUNTRY_NAMES[i]
         return country
 
+
+
+class GeoIPCache(PyGeoIPCache):        
+    def _reallyloadData(self, filename):
+        self.geoip = GeoIP.open(filename, GeoIP.GEOIP_STANDARD)
         
+    
+    def country_name(self, cc):
+        self.reloadifnecessary(self.filename)
+        country = 'unknown'
+        if cc:
+            cc = cc.upper()
+            if cc in GeoIP.country_names:
+                country = GeoIP.country_names[cc]
+        return country
+    
+    
         
         
 class GeoIPPlugin(ScannerPlugin):
@@ -136,18 +152,20 @@ class GeoIPPlugin(ScannerPlugin):
         
         
     def examine(self,suspect):
-        if not have_geoip:
+        if have_geoip == 0:
             return DUNNO
         
         database = self.config.get('GeoIP', 'database')
         if not os.path.exists(database):
             return DUNNO
-        if not self.geoip:
+        if not self.geoip and have_geoip == 1:
+            self.geoip = PyGeoIPCache(database)
+        elif not self.geoip and have_geoip == 2:
             self.geoip = GeoIPCache(database)
         
         client_address=suspect.get_value('client_address')
         if client_address is None:
-            self.logger.error('No client address found')
+            self.logger.info('No client address found')
             return DUNNO
         
         bl = self.config.get('GeoIP', 'blacklist').strip()
@@ -184,9 +202,14 @@ class GeoIPPlugin(ScannerPlugin):
     def lint(self):
         lint_ok = True
         
-        if not have_geoip:
-            print 'pygeoip module not installed - this plugin will do nothing'
+        if have_geoip == 0:
+            print 'No geoip module installed - this plugin will do nothing'
             lint_ok = False
+        elif have_geoip == 1:
+            print 'using pygeoip'
+        elif have_geoip == 2:
+            print 'using maxmind geoip'
+        
             
         database = self.config.get('GeoIP', 'database')
         if not os.path.exists(database):
