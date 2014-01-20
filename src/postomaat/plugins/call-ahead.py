@@ -503,7 +503,9 @@ class MySQLCache(CallAheadCacheInterface):
         statement="SELECT domain,relay,reason,expiry_ts FROM ca_blacklist WHERE expiry_ts>now() ORDER BY domain"
         values={}
         result=conn.execute(statement,values)
-        return result 
+        ret=[row for row in result]
+        conn.remove()
+        return ret
         
     def wipe_address(self,address):
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
