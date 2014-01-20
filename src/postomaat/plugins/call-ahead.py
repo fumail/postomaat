@@ -319,7 +319,9 @@ class SMTPTest(object):
         if tp=='sql':
             conn=get_session(self.config.get('AddressCheck','dbconnection'))
             ret=conn.execute(val)
-            return [result[0] for result in ret]
+            arr= [result[0] for result in ret]
+            conn.remove()
+            return arr
         elif tp=='mx':
             return mxlookup(val)
         elif tp=='static':
@@ -470,6 +472,7 @@ class MySQLCache(CallAheadCacheInterface):
                 'reason':reason,
                 }
         res=conn.execute(statement,values)
+        conn.remove()
             
     def is_blacklisted(self,domain,relay):
         """Returns True if the server/relay combination is currently blacklisted and should not be used for recipient verification"""
@@ -478,8 +481,9 @@ class MySQLCache(CallAheadCacheInterface):
             return False
         statement="SELECT reason FROM ca_blacklist WHERE domain=:domain and relay=:relay and expiry_ts>now()"
         values={'domain':domain,'relay':relay}
-        ret=conn.execute(statement,values)
-        return ret.scalar()
+        sc=conn.execute(statement,values).scalar()
+        conn.remove()
+        return sc
         
     def unblacklist(self,relayordomain):
         """remove a server from the blacklist/history"""
@@ -487,7 +491,9 @@ class MySQLCache(CallAheadCacheInterface):
         statement="""DELETE FROM ca_blacklist WHERE domain=:removeme or relay=:removeme"""
         values={'removeme':relayordomain}
         res=conn.execute(statement,values)
-        return res.rowcount
+        rc=res.rowcount
+        conn.remove()
+        return rc
        
     def get_blacklist(self):
         """return all blacklisted servers"""
@@ -503,11 +509,12 @@ class MySQLCache(CallAheadCacheInterface):
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
         if not conn:
             return
-        
         statement="""DELETE FROM ca_addresscache WHERE email=:email"""
         values={'email':address}
         res=conn.execute(statement,values)
-        return res.rowcount
+        rc= res.rowcount
+        conn.remove()
+        return rc
     
     def cleanup(self):
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
@@ -522,7 +529,7 @@ class MySQLCache(CallAheadCacheInterface):
         
         res=conn.execute("""DELETE FROM ca_blacklist where expiry_ts<now()""")
         blcount=res.rowcount
-        
+        conn.remove()
         return (poscount,negcount,blcount)
         
     def wipe_domain(self,domain,positive=None):
@@ -544,7 +551,9 @@ class MySQLCache(CallAheadCacheInterface):
         statement="""DELETE FROM ca_addresscache WHERE domain=:domain %s"""%posstatement
         values={'domain':domain}
         res=conn.execute(statement,values)
-        return res.rowcount
+        rc= res.rowcount
+        conn.remove()
+        return rc
         
     def put_address(self,address,seconds,positiveEntry=True,message=None):
         """put address into the cache"""
@@ -563,6 +572,7 @@ class MySQLCache(CallAheadCacheInterface):
                 'message':message,
             }
         conn.execute(statement,values)
+        conn.remove()
     
     
     def get_address(self,address):
@@ -573,7 +583,9 @@ class MySQLCache(CallAheadCacheInterface):
         statement="SELECT positive,message FROM ca_addresscache WHERE email=:email and expiry_ts>now()"
         values={'email':address}
         res=conn.execute(statement,values)
-        return res.first()
+        first= res.first()
+        conn.remove()
+        return first
      
     def get_all_addresses(self,domain):
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
@@ -582,8 +594,9 @@ class MySQLCache(CallAheadCacheInterface):
         statement="SELECT email,positive FROM ca_addresscache WHERE domain=:domain and expiry_ts>now() ORDER BY email"
         values={'domain':domain}
         result=conn.execute(statement,values)
-        
-        return result
+        ret=[x for x in result]
+        conn.remove()
+        return ret
     
     def get_total_counts(self):
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
@@ -593,6 +606,7 @@ class MySQLCache(CallAheadCacheInterface):
         statement="SELECT count(*) FROM ca_addresscache WHERE expiry_ts>now() and positive=0"
         result=conn.execute(statement)
         negcount=result.fetchone()[0]
+        conn.remove()
         return (poscount,negcount)
      
     
@@ -622,7 +636,9 @@ class MySQLConfigBackend(ConfigBackendInterface):
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
         
         res=conn.execute("SELECT confvalue FROM ca_configoverride WHERE domain=:domain and confkey=:confkey",{'domain':domain,'confkey':key})
-        return res.scalar()
+        sc=res.scalar()
+        conn.remove()
+        return sc
     
     def get_domain_config_all(self,domain):
         retval=dict()
@@ -630,6 +646,7 @@ class MySQLConfigBackend(ConfigBackendInterface):
         res=conn.execute("SELECT confkey,confvalue FROM ca_configoverride WHERE domain=:domain",{'domain':domain})
         for row in res:
             retval[row[0]]=row[1]
+        conn.remove()
         return retval
     
 class ConfigFileBackend(ConfigBackendInterface):
@@ -847,7 +864,7 @@ class SMTPTestCommandLineInterface(object):
                 print "+ ",email
             else:
                 print "- ",email
-        total=rows.rowcount
+        total=len(rows)
         print "Total %s cache entries for domain %s"%(total,domain)
         
     def show_blacklist(self,*args):
@@ -863,7 +880,7 @@ class SMTPTestCommandLineInterface(object):
             domain,relay,reason,exp=row
             print "%s\t%s\t%s"%(domain,relay,reason)
             
-        total=rows.rowcount
+        total=len(rows)
         print "Total %s blacklisted relays"%total
         
     def unblacklist(self,*args):
