@@ -346,7 +346,7 @@ class MainController(object):
         
         for plugin in allplugins:
             print
-            print "Linting Plugin ",fc.strcolor(str(plugin),'cyan')
+            print "Linting Plugin ",fc.strcolor(str(plugin),'cyan'),'Config section:',fc.strcolor(str(plugin.section),'cyan')
             try:
                 result=plugin.lint()
             except Exception,e:
