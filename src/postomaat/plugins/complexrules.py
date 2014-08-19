@@ -193,6 +193,10 @@ class ComplexRuleParser(object):
     def __init__(self):
         self.rules=[]
         self.logger=logging.getLogger('postomaat.complexruleparser')
+        
+        self.warn_rule_execution_time=0.5 #warn limit per rule
+        self.warn_total_execution_time=3 #warn limit for all rules
+        self.max_execution_time=5.0  #hard limit
     
     def add_rule(self,rule):
         try:
@@ -220,37 +224,40 @@ class ComplexRuleParser(object):
                 
         return all_ok
 
-    def apply(self,values,slowwarnings=True):
+    def apply(self,values):
         totalstart=time.time()
         parser=makeparser(values)
         ruletimes={}
         for rule in self.rules:
             rulestart=time.time()
             try:
-                
                 parsetree=parser.parseString(rule)  #test
-                
                 checkrule,action,message=parsetree
                 bmatch=bool(checkrule)
                 
-                ruletime=time.time()-rulestart
+                now=time.time()
+                ruletime=now-rulestart
                 ruletimes[ruletime]=rule
-                if slowwarnings and ruletime>0.25:
+                
+                if self.warn_rule_execution_time>0 and ruletime>self.warn_rule_execution_time:
                     self.logger.warn("warning: slow complexrule execution: %.4f for %s"%(ruletime,rule))
+                
                 if bmatch:
                     logmsg="postomaat-rulehit: sender=%s recipient=%s rule=%s %s %s"%(values.get('sender'),values.get('recipient'),checkrule,action,message)
                     self.logger.info(logmsg)
                     return action,message.strip()
+                
+                if now-time.time()>self.max_execution_time:
+                    self.logger.warn("warning: complex max execution time limit reached - not all rules have been executed")
+                    break
+                
             except ParseException,pe:
                 self.logger.warning("""Could not apply rule "%s" to message %s """%(rule,values))
                 self.logger.warning(str(pe))
                 
         totaltime=time.time()-totalstart
-        if slowwarnings and totaltime>2:
+        if self.warn_total_execution_time>0 and totaltime>self.warn_total_execution_time:
             self.logger.warn("warning: complexrules are getting slow: total rule exec time: %.4f"%totaltime)
-            maxtime=max(ruletimes.keys())
-            slowestrule=ruletimes[maxtime]
-            self.logger.warn("Slowest complexrule (%.4f) was: %s"%(maxtime,slowestrule))
         return DUNNO,''
 
 
@@ -331,8 +338,7 @@ class ComplexRules(ScannerPlugin):
                 okmsg="some rules failed to load"
             self.logger.info("Rule reload complete, %s rules now active, (%s)"%(numrules,okmsg))
         
-        slowwarnings=not newcontent
-        retaction,retmessage=self.ruleparser.apply(suspect.values,slowwarnings=slowwarnings)
+        retaction,retmessage=self.ruleparser.apply(suspect.values)
         return retaction,retmessage
 
     def lint(self):
