@@ -234,8 +234,8 @@ class ComplexRuleParser(object):
                 bmatch=bool(checkrule)
                 
                 ruletime=time.time()-rulestart
+                ruletimes[ruletime]=rule
                 if slowwarnings and ruletime>0.25:
-                    ruletimes[ruletime]=rule
                     self.logger.warn("warning: slow complexrule execution: %.4f for %s"%(ruletime,rule))
                 if bmatch:
                     logmsg="postomaat-rulehit: sender=%s recipient=%s rule=%s %s %s"%(values.get('sender'),values.get('recipient'),checkrule,action,message)
