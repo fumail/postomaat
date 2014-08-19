@@ -110,7 +110,8 @@ class ValueChecker(object):
     def __bool__(self):
         func= self.funcs[self.op]
         res=func()
-        self.logger.debug("%s %s %s ? : %s"%(self.pfixname,self.op,self.checkval,res))
+        #logmsg="%s %s %s ? : %s (%.4f)"%(self.pfixname,self.op,self.checkval,res,runtime)
+        #self.logger.debug(logmsg)
         return res
         
     
@@ -219,15 +220,23 @@ class ComplexRuleParser(object):
                 
         return all_ok
 
-    def apply(self,values):
+    def apply(self,values,slowwarnings=True):
+        totalstart=time.time()
+        parser=makeparser(values)
+        ruletimes={}
         for rule in self.rules:
+            rulestart=time.time()
             try:
-                parsetree=makeparser(values).parseString(rule)  #test
+                
+                parsetree=parser.parseString(rule)  #test
                 
                 checkrule,action,message=parsetree
                 bmatch=bool(checkrule)
-                #debug
-                #print "rule=%s match=%s action=%s message=%s msg=%s"%(checkrule,bmatch,action,message,values)
+                
+                ruletime=time.time()-rulestart
+                if slowwarnings and ruletime>0.25:
+                    ruletimes[ruletime]=rule
+                    self.logger.warn("warning: slow complexrule execution: %.4f for %s"%(ruletime,rule))
                 if bmatch:
                     logmsg="postomaat-rulehit: sender=%s recipient=%s rule=%s %s %s"%(values.get('sender'),values.get('recipient'),checkrule,action,message)
                     self.logger.info(logmsg)
@@ -235,6 +244,13 @@ class ComplexRuleParser(object):
             except ParseException,pe:
                 self.logger.warning("""Could not apply rule "%s" to message %s """%(rule,values))
                 self.logger.warning(str(pe))
+                
+        totaltime=time.time()-totalstart
+        if slowwarnings and totaltime>2:
+            self.logger.warn("warning: complexrules are getting slow: total rule exec time: %.4f"%totaltime)
+            maxtime=max(ruletimes.keys())
+            slowestrule=ruletimes[maxtime]
+            self.logger.warn("Slowest complexrule (%.4f) was: %s"%(maxtime,slowestrule))
         return DUNNO,''
 
 
@@ -315,7 +331,8 @@ class ComplexRules(ScannerPlugin):
                 okmsg="some rules failed to load"
             self.logger.info("Rule reload complete, %s rules now active, (%s)"%(numrules,okmsg))
         
-        retaction,retmessage=self.ruleparser.apply(suspect.values)
+        slowwarnings=not newcontent
+        retaction,retmessage=self.ruleparser.apply(suspect.values,slowwarnings=slowwarnings)
         return retaction,retmessage
 
     def lint(self):
