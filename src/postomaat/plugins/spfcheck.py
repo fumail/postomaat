@@ -113,6 +113,8 @@ class SPFPlugin(ScannerPlugin):
             return DUNNO
 
         sender_email = strip_address(sender)
+        if sender_email=='' or sender_email==None:
+            return DUNNO
 
         selective_sender_domain_file=self.config.get(self.section,'domain_selective_spf_file')
         if selective_sender_domain_file!='':
@@ -120,6 +122,8 @@ class SPFPlugin(ScannerPlugin):
                 self.selective_domain_loader=ListConfigFile(selective_sender_domain_file,lowercase=True)
             try:
                 sender_domain = extract_domain(sender_email)
+                if sender_domain==None:
+                    return DUNNO
             except ValueError as e:
                 self.logger.warning(str(e))
                 return DUNNO
