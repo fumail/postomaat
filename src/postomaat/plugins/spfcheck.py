@@ -64,7 +64,7 @@ class SPFPlugin(ScannerPlugin):
         if not addr.startswith('172.'):
             return False
         for i in range(16,32):
-            if addr.startswith('172.'+i):
+            if addr.startswith('172.%s'%i):
                 return True
         return False
 
