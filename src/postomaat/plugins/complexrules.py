@@ -247,7 +247,7 @@ class ComplexRuleParser(object):
                     self.logger.info(logmsg)
                     return action,message.strip()
                 
-                if now-totalstart>self.max_execution_time:
+                if (now-totalstart)>self.max_execution_time:
                     self.logger.warn("warning: complex max execution time limit reached - not all rules have been executed")
                     break
                 
