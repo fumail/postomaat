@@ -1,9 +1,17 @@
 [SPFPlugin]
-# which sending hosts/networks should be excluded from SPF checks
-ip_whitelist=127.0.0.0/8
-# which sender domains should be excluded from SPF checks
-domain_whitelist=example.com
-# what to do on softfail. set this to REJECT or DUNNO
+# which sending hosts/networks should be excluded from SPF checks, one ip per line. supports CIDR notation if netaddr module is installed
+ip_whitelist_file=
+# which sender domains should be checked for SPF. if this is empty, all domains are checked
+# one domain per line
+domain_selective_spf_file=
+
+# reject/defer template, ${result} is the spf code (neutral,fail,softfail,softerror, ...) , ${explanation} is a human readable explanation
+messagetemplate=SPF ${result} for domain ${from_domain} from ${client_address} : ${explanation}
+
+# what to do on softfail (eg. ~all)
 on_softfail=DUNNO
-# what to do on softerror. set this to DEFER or DUNNO
-on_softerror=DEFER
+# what to do on hard fail (eg. -all)
+on_fail=DUNNO
+
+#you can also use on_softerror / on_permerror etc if you want to defer messages with invalid spf records , lookup problems, ...
+
