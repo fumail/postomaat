@@ -108,6 +108,10 @@ class Suspect(object):
         return self.values[key] 
     
     def get_stage(self):
+        """backwards compatibility alias for get_protocol_state"""
+        return self.get_protocol_state()
+
+    def get_protocol_state(self):
         """returns the current protocol state"""
         return self.get_value('protocol_state')
           
