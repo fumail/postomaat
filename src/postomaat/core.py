@@ -45,12 +45,18 @@ class SessionHandler(object):
         self.arg=""
         self.config=config
         self.plugins=plugins
+        self.workerthread = None
+
+    def set_threadinfo(self, status):
+        if self.workerthread != None:
+            self.workerthread.threadinfo = status
 
         
-    def handlesession(self):
-        starttime=time.time()
+    def handlesession(self, workerthread=None):
+        self.workerthread = workerthread
         sess=None
         try:
+            self.set_threadinfo('receiving message')
             sess=PolicydSession(self.incomingsocket,self.config)
             success=sess.getrequest()
             if not success:
@@ -68,7 +74,7 @@ class SessionHandler(object):
             except Exception,e:
                 self.logger.warning('Could not get incoming port: %s'%str(e))
             
-            
+            self.set_threadinfo("Handling message %s" % suspect)
             starttime=time.time()
             self.run_plugins(suspect,self.plugins)
              
@@ -78,6 +84,7 @@ class SessionHandler(object):
             
             #checks done.. print out suspect status
             self.logger.debug(suspect)
+            self.set_threadinfo("Finishing message %s" % suspect)
             sess.endsession(self.action,self.arg)
             
         except KeyboardInterrupt:
@@ -93,7 +100,8 @@ class SessionHandler(object):
         for plugin in pluglist:
             try:
                 self.logger.debug('Running plugin %s'%plugin)
-                
+                self.set_threadinfo(
+                    "%s : Running Plugin %s" % (suspect, plugin))
                 ans = plugin.examine(suspect)
                 arg=None
                 if type(ans) is tuple:
