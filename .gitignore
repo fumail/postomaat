@@ -28,3 +28,6 @@ pip-log.txt
 
 # setup
 MANIFEST
+
+# Pycharm
+.idea/
