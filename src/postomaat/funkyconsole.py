@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# $Id: funkyconsole.py 7 2009-04-09 06:51:25Z oli $
-#
+
+
 class FunkyConsole(object):
     """Totally useless console colors for the lint mode"""
     
