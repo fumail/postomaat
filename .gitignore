@@ -31,3 +31,7 @@ MANIFEST
 
 # Pycharm
 .idea/
+
+.project
+.pydevproject
+.settings/
