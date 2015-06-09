@@ -241,7 +241,7 @@ class BlackWhiteList(ScannerPlugin):
             return DUNNO
         
         from_address=suspect.get_value('sender')
-        if from_address==None:
+        if from_address is None:
             self.logger.warning('No FROM address found')
             return DEFER_IF_PERMIT,'internal policy error (no from address)'
         
@@ -253,7 +253,7 @@ class BlackWhiteList(ScannerPlugin):
             return DUNNO
         
         to_address=suspect.get_value('recipient')
-        if to_address==None:
+        if to_address is None:
             self.logger.warning('No RCPT address found')
             return DEFER_IF_PERMIT,'internal policy error (no rcpt address)'
         
@@ -263,7 +263,9 @@ class BlackWhiteList(ScannerPlugin):
         listings = self._get_listings()
         result = DUNNO
         message = None
-        
+
+        compare = ''
+        found = False
         for check in LISTING_TYPES:
             for cmp_value in check['cmp']:
                 if cmp_value == 'to_address':
@@ -272,12 +274,20 @@ class BlackWhiteList(ScannerPlugin):
                     compare = from_address
                 elif cmp_value == 'from_domain':
                     compare = from_domain
+
+                if compare is None:
+                    compare = ''
                 
                 for scope in [GLOBALSCOPE, '%%%s' % to_domain, to_address]:
                     if self._check_list(check['name'], listings, scope, compare):
                         result = self._get_action(check['name'])
                         message = self._get_message(check['name'])
+                        found = True
                         break
+                if found:
+                    break
+            if found:
+                break
         
         return result, message
         
