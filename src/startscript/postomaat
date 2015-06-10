@@ -124,6 +124,7 @@ parser.add_option("-c", "--config", action="store", dest="configfile",
                   help="use a different config file and disable reading from /etc/fuglu/conf.d")
 parser.add_option("--debugmsg", action="store_true", dest="debugmsg",
                   default=False, help="simulate a message and print the result. use the debugmsg arguments listed below to override defaults")
+parser.add_option("--debugmsgport", action="store", dest="debugmsgport",help="test a specific port configuration with debugmsg. if not specified, all plugins are run")
 parser.add_option("--debug", action="store_true", dest="debug",
                   default=False, help="enable verbose/debug output for lint/debugmsg")
 for k,v in defaultattrs.iteritems():
@@ -217,7 +218,7 @@ elif debugmsg:
         if getattr(opts,arg)!=None:
             attrs[arg]=getattr(opts,arg)
     print attrs
-    action,arg=controller.test(attrs)
+    action,arg=controller.test(attrs,port=opts.debugmsgport)
     if arg==None:
         arg=""
     print "Result: %s %s"%(action.upper(),arg)

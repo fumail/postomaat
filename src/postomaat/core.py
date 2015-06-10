@@ -331,13 +331,33 @@ class MainController(object):
         self.logger.info('Config changes applied')
     
     
-    def test(self,valuedict):
+    def test(self,valuedict,port=None):
         """dryrun without postfix"""
         suspect=Suspect(valuedict)
         if not self.load_plugins():
             sys.exit(1)
-        sesshandler=SessionHandler(None, self.config, self.plugins)
-        sesshandler.run_plugins(suspect, self.plugins)
+
+        if port!=None:
+            plugins=None
+            ports=self.config.get('main', 'incomingport')
+            for portconfig in ports.split():
+                if ':' in portconfig:
+                    pport,pluginlist=portconfig.split(':')
+                    if pport!=port:
+                        continue
+                    plugins,ok=self._load_all(pluginlist)
+                    break
+                else:
+                    if portconfig==port: #port with default config
+                        plugins=self.plugins
+                        break
+        else:
+            plugins=self.plugins
+
+        if plugins==None:
+            raise Exception("no plugin configuration for current port selection")
+        sesshandler=SessionHandler(None, self.config, plugins)
+        sesshandler.run_plugins(suspect, plugins)
         action=sesshandler.action
         arg=sesshandler.arg
         return (action,arg)
