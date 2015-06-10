@@ -29,13 +29,14 @@ import signal
 import os
 import pwd
 import grp
+import optparse
 
 controller=None
 
 theconfigfile='/etc/postomaat/postomaat.conf'
 dconfdir='/etc/postomaat/conf.d'
 theloggingfile='/etc/postomaat/logging.conf'
-
+thepidfile = '/var/run/postomaat.pid'
 
 
 def reloadconfig():
@@ -76,25 +77,6 @@ def sighup(signum,frame):
     """handle sighup to reload config"""
     reloadconfig()
 
-lint=False
-debugmsg=False
-
-if "--lint" in sys.argv:
-    lint=True
-
-if '--test' in sys.argv:
-    debugmsg=True
-
-if '--help' in sys.argv:
-    print "Usage:"
-    print "postomaat --lint [--debug] to check config"
-    print "--test [--debug] attr=val attr=val ...   to test a message/debug postomaat"
-    print "--attrs to print a list of supported policy attributes"
-    sys.exit(0)
-
-if "--version" in sys.argv:
-    print "Postomaat Version %s"%POSTOMAAT_VERSION
-    sys.exit(0) 
 
 defaultattrs={
     #Postfix version 2.1 and later:
@@ -127,7 +109,49 @@ defaultattrs={
     'stress':'',
 }
 
-if '--attrs' in sys.argv:
+parser = optparse.OptionParser(version=POSTOMAAT_VERSION)
+parser.add_option("--lint", action="store_true", dest="lint",
+                  default=False, help="Check configuration and exit")
+parser.add_option("--console", action="store_true", dest="console",
+                  default=False, help="start an interactive console after postomaat startup")
+parser.add_option("--attrs", action="store_true", dest="attrs",
+                  default=False, help="print available message attributes and their defaults and exit")
+parser.add_option("-f", "--foreground", action="store_true", dest="foreground", default=False,
+                  help="start fuglu in the foreground, even if daemonize is enabled in the config")
+parser.add_option("--pidfile", action="store", dest="pidfile",
+                  help="use a different pidfile than /var/run/postomaat.pid")
+parser.add_option("-c", "--config", action="store", dest="configfile",
+                  help="use a different config file and disable reading from /etc/fuglu/conf.d")
+parser.add_option("--debugmsg", action="store_true", dest="debugmsg",
+                  default=False, help="simulate a message and print the result. use the debugmsg arguments listed below to override defaults")
+parser.add_option("--debug", action="store_true", dest="debug",
+                  default=False, help="enable verbose/debug output for lint/debugmsg")
+for k,v in defaultattrs.iteritems():
+    parser.add_option("--%s"%k,action="store",dest=k,default=None,help="debugmsg argument, default=%s"%v)
+
+(opts, args) = parser.parse_args()
+if len(args) > 0:
+    print "Unknown option(s): %s" % args
+    print ""
+    parser.print_help()
+    sys.exit(1)
+
+
+lint = opts.lint
+console = opts.console
+debugmsg = opts.debugmsg
+
+
+if opts.pidfile:
+    thepidfile = opts.pidfile
+
+if opts.configfile:
+    theconfigfile = opts.configfile
+    theloggingfile = os.path.join(
+        os.path.split(theconfigfile)[0], os.path.split(theloggingfile)[1])
+    dconfdir = None
+
+if opts.attrs:
     print "Supported attributes and their default:"
     print "See http://www.postfix.org/SMTPD_POLICY_README.html#protocol for a full description"
     print ""
@@ -148,9 +172,9 @@ if os.path.isdir(dconfdir):
     readfiles=config.read(configfiles)
 
 
-daemon=DaemonStuff('/var/run/postomaat.pid')
+daemon=DaemonStuff(thepidfile)
 #we could have an empty config file
-if  not (lint or debugmsg): #no daemon for lint
+if  not (lint or debugmsg or console or opts.foreground):
     if config.has_option('main', 'daemonize'):
         if config.getboolean('main', 'daemonize'):
             daemon.createDaemon()
@@ -159,9 +183,9 @@ if  not (lint or debugmsg): #no daemon for lint
         
 if lint or debugmsg:
     level=logging.INFO
-    if '--debug' in sys.argv:
+    if opts.debug:
         level=logging.DEBUG
-        
+
     logging.basicConfig(level=level)
     
     fc=postomaat.funkyconsole.FunkyConsole()
@@ -173,7 +197,7 @@ else:
 controller=MainController(config)
 controller.propagate_core_defaults()
 baselogger=logging.getLogger('')
-baselogger.info("postomaat Version %s starting up"%POSTOMAAT_VERSION)
+baselogger.info("postomaat version %s starting up"%POSTOMAAT_VERSION)
 
 try:
     running_user=config.get('main','user')
@@ -184,23 +208,14 @@ except:
 daemon.drop_privs(running_user,running_group)
 
 
-
-
 if lint:
     controller.lint()
 elif debugmsg:    
     attrs=defaultattrs.copy()
     
-    for arg in sys.argv:
-        if not '=' in arg:
-            continue
-        
-        key,value=arg.split('=',1)
-        
-        if key in defaultattrs:
-            attrs[key]=value
-        else:
-            print "Warning: %s ignored - unsupported attribute"%key
+    for arg in defaultattrs.keys():
+        if getattr(opts,arg)!=None:
+            attrs[arg]=getattr(opts,arg)
     print attrs
     action,arg=controller.test(attrs)
     if arg==None:
@@ -208,6 +223,8 @@ elif debugmsg:
     print "Result: %s %s"%(action.upper(),arg)
 else:
     signal.signal(signal.SIGHUP, sighup)
+    if console:
+        controller.debugconsole = True
     controller.startup()
 
 
