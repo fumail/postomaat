@@ -33,6 +33,8 @@ from postomaat.plugins import *
 from postomaat.shared import *
 import threading
 from threadpool import ThreadPool
+import code
+
 
 HOSTNAME=socket.gethostname()
 
@@ -216,6 +218,7 @@ class MainController(object):
         self.logger=self._logger()
         self.stayalive=True
         self.threadpool=None
+        self.debugconsole = False
         
         
     def _logger(self):
@@ -263,12 +266,30 @@ class MainController(object):
             thread.start_new_thread(server.serve, ())
             self.servers.append(server)
         self.logger.info('Startup complete')
-        while self.stayalive:
-            try:
-                time.sleep(10)
-            except KeyboardInterrupt:
-                self.shutdown()
-    
+        if self.debugconsole:
+            self.run_debugconsole()
+        else:
+            while self.stayalive:
+                try:
+                    time.sleep(10)
+                except KeyboardInterrupt:
+                    self.shutdown()
+
+    def run_debugconsole(self):
+        # do not import readline at the top, it will cause undesired output, for example when generating the default config
+        # http://stackoverflow.com/questions/15760712/python-readline-module-prints-escape-character-during-import
+        import readline
+
+        print "Interactive Console started"
+        print ""
+        print "pre-defined locals:"
+
+        mc = self
+        print "mc : maincontroller"
+
+        terp = code.InteractiveConsole(locals())
+        terp.interact("")
+
     def reload(self):
         """apply config changes"""
         self.logger.info('Applying configuration changes...')
