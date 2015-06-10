@@ -1,14 +1,14 @@
-#copy this to /usr/lib/systemd/system/fuglu.service
-#systemctl enable fuglu
-#systemctl start fuglu
+#copy this to /usr/lib/systemd/system/postomaat.service
+#systemctl enable postomaat
+#systemctl start postomaat
 
 [Unit]
-Description=fuglu mail filter
+Description=postomaat policy daemon
 
 [Service]
 Type=forking
-PIDFile=/run/fuglu.pid
-ExecStart=/usr/bin/fuglu --pidfile=/run/fuglu.pid
+PIDFile=/run/postomaat.pid
+ExecStart=/usr/bin/postomaat --pidfile=/run/postomaat.pid
 
 [Install]
 WantedBy=multi-user.target
