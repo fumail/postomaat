@@ -17,8 +17,15 @@ try:
 except ImportError:
     pass
 
+RE2_AVAILABLE=False
+try:
+    import re2 as re
+    RE2_AVAILABLE=True
+except ImportError:
+    import re
+
+
 import logging
-import re
 import os
 import time
 import string
@@ -345,9 +352,10 @@ class ComplexRules(ScannerPlugin):
         if not PYPARSING_AVAILABLE:
             print "pyparsing is not installed, can not use complex rules"
             return False
-        
-        
-        
+
+        if RE2_AVAILABLE:
+            print "Using re2(google) library"
+
         if not self.checkConfig():
             print 'Error checking config'
             return False
@@ -416,9 +424,15 @@ sender~=/^EX_.+@girlfriends.com/i && (size<100 || size>20000) REJECT say somethi
             print "FAIL! : Expected '%s %s' got '%s %s'"%(expaction,expmessage,retaction,retmessage)
     
    
-    
-    
-    
-        
-    
-    
+    ### perftest
+    print "Starting perftest"
+    c.logger.setLevel(logging.CRITICAL)
+    start=time.time()
+    iterations=10000
+    for _ in range(iterations):
+        msg=addr_literal
+        action,message=c.apply(msg)
+
+    end=time.time()
+    diff=end-start
+    print "Perftest: %s regex rules in %.2f seconds"%(iterations,diff)
