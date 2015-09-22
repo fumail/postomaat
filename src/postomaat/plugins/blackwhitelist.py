@@ -183,6 +183,8 @@ class BlackWhiteList(ScannerPlugin):
                     if not listing_type in listings:
                         listings[listing_type] = {}
                     username = r.username
+                    if username.startswith('*@'): # roundcube sauserprefs plugin domain wide scope
+                        username = username.lstrip('*@')
                     if not username in listings[listing_type]:
                         listings[listing_type][username] = []
                     listings[listing_type][username].append(r.value)
