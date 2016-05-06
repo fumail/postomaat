@@ -132,7 +132,7 @@ class SPFPlugin(ScannerPlugin):
             if not sender_domain.lower() in self.selective_domain_loader.get_content():
                 return DUNNO
 
-        result, explanation = spf.check2(client_address, sender_email, helo_name)
+        result, explanation = spf.check2(unicode(client_address), sender_email, helo_name)
         suspect.tags['spf']=result
         if result!='none':
             self.logger.info('SPF client=%s, sender=%s, h=%s result=%s : %s' % (client_address, sender_email, helo_name, result,explanation))
