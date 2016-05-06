@@ -227,4 +227,6 @@ class GeoIPPlugin(ScannerPlugin):
         return lint_ok
         
         
-        
+
+    def __str__(self):
+        return "GeoIPPlugin"

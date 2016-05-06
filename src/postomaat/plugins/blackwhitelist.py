@@ -328,7 +328,8 @@ class BlackWhiteList(ScannerPlugin):
         return status
     
     
-    
+    def __str__(self):
+        return "BlackWhiteList"
     
     
     

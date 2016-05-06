@@ -282,5 +282,6 @@ class EnforceMX(ScannerPlugin):
         
     
     
-    
+    def __str__(self):
+        return "EnforceMX"
     
