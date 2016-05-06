@@ -71,12 +71,13 @@ class SPFPlugin(ScannerPlugin):
 
     def ip_whitelisted(self,addr):
         if self.is_private_address(addr):
-            return DUNNO
+            return True
 
         #check ip whitelist
         ip_whitelist_file=self.config.get(self.section,'ip_whitelist_file')
-        if ip_whitelist_file!=None:
-            if self.ip_whitelist_loader==None:
+        if ip_whitelist_file is not None:
+            plainlist = []
+            if self.ip_whitelist_loader is None:
                 self.ip_whitelist_loader=ListConfigFile(ip_whitelist_file,lowercase=True)
 
             if self.ip_whitelist_loader.file_changed():
@@ -86,14 +87,15 @@ class SPFPlugin(ScannerPlugin):
                     self.ip_whitelist=[IPNetwork(x) for x in plainlist]
                 else:
                     self.ip_whitelist=plainlist
+
             if have_netaddr:
                 checkaddr=IPAddress(addr)
                 for net in self.ip_whitelist:
-                        if checkaddr in net:
-                            return True
+                    if checkaddr in net:
+                        return True
             else:
                 if addr in plainlist:
-                        return True
+                    return True
         return False
 
 
@@ -113,16 +115,16 @@ class SPFPlugin(ScannerPlugin):
             return DUNNO
 
         sender_email = strip_address(sender)
-        if sender_email=='' or sender_email==None:
+        if sender_email=='' or sender_email is None:
             return DUNNO
 
         selective_sender_domain_file=self.config.get(self.section,'domain_selective_spf_file')
         if selective_sender_domain_file!='':
-            if self.selective_domain_loader==None:
+            if self.selective_domain_loader is None:
                 self.selective_domain_loader=ListConfigFile(selective_sender_domain_file,lowercase=True)
             try:
                 sender_domain = extract_domain(sender_email)
-                if sender_domain==None:
+                if sender_domain is None:
                     return DUNNO
             except ValueError as e:
                 self.logger.warning(str(e))
@@ -141,8 +143,6 @@ class SPFPlugin(ScannerPlugin):
         configopt='on_%s'%result
         if self.config.has_option(self.section,configopt):
             action=self.config.get(self.section,configopt)
-        else:
-            action=DUNNO
 
         return action, message
          
