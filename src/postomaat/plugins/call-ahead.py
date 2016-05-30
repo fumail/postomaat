@@ -100,7 +100,12 @@ class AddressCheck(ScannerPlugin):
         from_address=strip_address(from_address)
         
         #check cache
-        entry=self.cache.get_address(address)
+        try:
+            entry=self.cache.get_address(address)
+        except Exception as e:
+            self.logger.error('Could not connect to database')
+            return DUNNO
+
         if entry!=None:
             (positive,message)=entry
             
@@ -117,10 +122,15 @@ class AddressCheck(ScannerPlugin):
         #load domain config
         domain=extract_domain(address)
         domainconfig=MySQLConfigBackend(self.config).get_domain_config_all(domain)
-        
+
+        if domainconfig is None:
+            self.logger.debug('Domainconfig for domain %s was empty' % domain)
+            return DUNNO
         
         #enabled?
         test=SMTPTest(self.config)
+        servercachetime = test.get_domain_config(domain, 'test_server_interval', domainconfig)
+
         enabled=int(test.get_domain_config(domain, 'enabled', domainconfig))
         if not enabled:
             self.logger.info('%s: call-aheads for domain %s are disabled'%(address,domain))
@@ -150,7 +160,7 @@ class AddressCheck(ScannerPlugin):
         sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':from_address})
         result=test.smtptest(relay,[address,testaddress],mailfrom=sender)
         
-        servercachetime=test.get_domain_config(domain, 'test_server_interval', domainconfig)
+
         if result.state!=SMTPTestResult.TEST_OK:
             self.logger.error('Problem testing recipient verification support on server %s : %s. putting on blacklist.'%(relay,result.errormessage))
             self.cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
@@ -631,24 +641,30 @@ class ConfigBackendInterface(object):
 
 class MySQLConfigBackend(ConfigBackendInterface):
     def __init__(self,config):
+        self.logger=logging.getLogger('postomaat.call-ahead.%s'%self.__class__.__name__)
         ConfigBackendInterface.__init__(self, config)
     
     def get_domain_config_value(self,domain,key):
-        retval=None
-        conn=get_session(self.config.get('AddressCheck','dbconnection'))
-        
-        res=conn.execute("SELECT confvalue FROM ca_configoverride WHERE domain=:domain and confkey=:confkey",{'domain':domain,'confkey':key})
-        sc=res.scalar()
-        conn.remove()
+        sc=None
+        try:
+            conn=get_session(self.config.get('AddressCheck','dbconnection'))
+            res=conn.execute("SELECT confvalue FROM ca_configoverride WHERE domain=:domain and confkey=:confkey",{'domain':domain,'confkey':key})
+            sc=res.scalar()
+            conn.remove()
+        except Exception as e:
+            self.logger.error('Could not connect to database')
         return sc
     
     def get_domain_config_all(self,domain):
         retval=dict()
-        conn=get_session(self.config.get('AddressCheck','dbconnection'))
-        res=conn.execute("SELECT confkey,confvalue FROM ca_configoverride WHERE domain=:domain",{'domain':domain})
-        for row in res:
-            retval[row[0]]=row[1]
-        conn.remove()
+        try:
+            conn=get_session(self.config.get('AddressCheck','dbconnection'))
+            res=conn.execute("SELECT confkey,confvalue FROM ca_configoverride WHERE domain=:domain",{'domain':domain})
+            for row in res:
+                retval[row[0]]=row[1]
+            conn.remove()
+        except Exception as e:
+            self.logger.error('Could not connect to database')
         return retval
     
 class ConfigFileBackend(ConfigBackendInterface):
