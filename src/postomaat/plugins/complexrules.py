@@ -111,6 +111,7 @@ class ValueChecker(object):
         try:
             match= re.search(self.checkval, v,reflags)
         except Exception,e:
+            match = None
             logging.error(e)
         return match!=None
     
@@ -129,6 +130,9 @@ class ValueChecker(object):
 
 
 class BoolBinOp(object):
+    reprsymbol = None
+    def evalop(self, arg):
+        raise NotImplementedError
     def __init__(self,t):
         self.args = t[0][0::2]
     def __str__(self):
@@ -185,6 +189,7 @@ def makeparser(values):
         elif l==4:
             pfixname,op,checkval,modifiers=tokens
         else:
+            pfixname = op = checkval = None
             logging.error("Parser error, got unexpected token amount, tokens=%s"%tokens)
         #print "checking %s %s %s"%(pfixname,op,checkval)
         
