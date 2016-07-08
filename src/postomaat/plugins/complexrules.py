@@ -9,10 +9,10 @@
 
 from postomaat.shared import ScannerPlugin,DUNNO,REJECT,DEFER,DEFER_IF_REJECT,DEFER_IF_PERMIT,OK,DISCARD,FILTER,HOLD,PREPEND,REDIRECT,WARN
 
-from pyparsing import Optional
 PYPARSING_AVAILABLE=False
 try:
-    from pyparsing import infixNotation, opAssoc, Keyword, Word, alphas,oneOf,nums,alphas,Literal,restOfLine,ParseException,QuotedString
+    # requires pyparsing >= 2
+    from pyparsing import Optional, infixNotation, opAssoc, Keyword, Word, alphas,oneOf,nums,alphas,Literal,restOfLine,ParseException,QuotedString
     PYPARSING_AVAILABLE=True
 except ImportError:
     pass
