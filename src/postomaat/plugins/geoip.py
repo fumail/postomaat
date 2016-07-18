@@ -13,7 +13,7 @@ from threading import Lock
 import logging
 import os
 
-from postomaat.shared import ScannerPlugin, DUNNO, REJECT
+from postomaat.shared import ScannerPlugin, DUNNO, REJECT, apply_template
 
 LIB_GEOIP_NONE = 0
 LIB_GEOIP_PYGEOIP = 1
@@ -152,9 +152,9 @@ class GeoIPPlugin(ScannerPlugin):
                 'description':'what to do with unknown countries? this affects local IP-addresses. Set this to DUNNO or REJECT',
             },
             'reject_message':{
-                'default':'this system does not accept mail from servers in your country "%(cn)s" - request whitelisting',
-                'description':'message displayed to client on reject. use %(cc)s as placeholder for country code and %(cn)s for English country name',
-            }
+                'default':'this system does not accept mail from servers in your country "${cn}" - request whitelisting',
+                'description':'message displayed to client on reject. use ${cc} as placeholder for country code and ${cn} for English country name',
+            },
         }
         
         
@@ -202,7 +202,7 @@ class GeoIPPlugin(ScannerPlugin):
             
         if action == REJECT:
             rejmsg = self.config.get(self.section, 'reject_message').strip()
-            message = rejmsg % dict(cn=cn, cc=cc)
+            message = apply_template(rejmsg, suspect, dict(cn=cn, cc=cc))
             
         return action, message
         
