@@ -151,6 +151,10 @@ class GeoIPPlugin(ScannerPlugin):
                 'default':'DUNNO',
                 'description':'what to do with unknown countries? this affects local IP-addresses. Set this to DUNNO or REJECT',
             },
+            'reject_message':{
+                'default':'this system does not accept mail from servers in your country "%(cn)s" - request whitelisting',
+                'description':'message displayed to client on reject. use %(cc)s as placeholder for country code and %(cn)s for English country name',
+            }
         }
         
         
@@ -159,7 +163,7 @@ class GeoIPPlugin(ScannerPlugin):
         if have_geoip == LIB_GEOIP_NONE:
             return DUNNO
         
-        database = self.config.get('GeoIP', 'database')
+        database = self.config.get(self.section, 'database')
         if not os.path.exists(database):
             return DUNNO
         if not self.geoip and have_geoip == LIB_GEOIP_PYGEOIP:
@@ -172,15 +176,15 @@ class GeoIPPlugin(ScannerPlugin):
             self.logger.info('No client address found')
             return DUNNO
         
-        bl = self.config.get('GeoIP', 'blacklist').strip()
+        bl = self.config.get(self.section, 'blacklist').strip()
         blacklist = []
         if bl:
             blacklist = [i.strip() for i in bl.split(',')]
-        wl = self.config.get('GeoIP', 'whitelist').strip()
+        wl = self.config.get(self.section, 'whitelist').strip()
         whitelist = []
         if wl:
             whitelist = [i.strip() for i in wl.split(',')]
-        on_unknown = self.config.get('GeoIP', 'on_unknown')
+        on_unknown = self.config.get(self.section, 'on_unknown')
         unknown = DUNNO
         if on_unknown.strip().upper() == 'REJECT':
             unknown = REJECT
@@ -197,7 +201,8 @@ class GeoIPPlugin(ScannerPlugin):
             action = REJECT
             
         if action == REJECT:
-            message = 'this system does not accept mail from servers in your country "%s" - request whitelisting' % cn
+            rejmsg = self.config.get(self.section, 'reject_message').strip()
+            message = rejmsg % dict(cn=cn, cc=cc)
             
         return action, message
         
@@ -215,7 +220,7 @@ class GeoIPPlugin(ScannerPlugin):
             print 'using maxmind geoip'
         
             
-        database = self.config.get('GeoIP', 'database')
+        database = self.config.get(self.section, 'database')
         if not os.path.exists(database):
             print 'Could not find geoip database file - this plugin will do nothing'
             lint_ok = False
