@@ -31,9 +31,17 @@ maxthreads=80
 
 
 [PluginAlias]
-#TODO
-
-
-
+blackwhitelist=postomaat.plugins.blackwhitelist.BlackWhiteList
+call-ahead=postomaat.plugins.call-ahead.AddressCheck
+complexrules=postomaat.plugins.complexrules.ComplexRules
+dbwriter=postomaat.plugins.dbwriter.DBWriter
+enforcemx=postomaat.plugins.enforcemx.EnforceMX
+geoip=postomaat.plugins.geoip.GeoIPPlugin
+helotld=postomaat.plugins.helotld.HELOTLDPlugin
+identitycrisis=postomaat.plugins.rdns.IdentityCrisis
+creativetld=postomaat.plugins.rdns.CreativeTLD
+recipientrules=postomaat.plugins.recipientrules.RecipientRules
+script=postomaat.plugins.script.ScriptFilter
+spfcheck=postomaat.plugins.spfcheck.SPFPlugin
 
 
