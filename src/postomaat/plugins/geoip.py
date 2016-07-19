@@ -31,13 +31,12 @@ except:
 
 
 class FuFileCache(object):
-    __shared_state = {}
-            
     def _reallyloadData(self, filename):
         raise NotImplementedError()
 
     def __init__(self, filename, **kw):
-        self.__dict__ = self.__shared_state
+        self.logger=logging.getLogger('postomaat.geoip.%s' % self.__class__)
+        self.filename = filename
 
         if not hasattr(self, 'lock'):
             self.lock=Lock()
@@ -45,8 +44,9 @@ class FuFileCache(object):
             self.logger=logging.getLogger(str(self))
         if not hasattr(self,'lastreload'):
             self.lastreload=0
-        
-        self.reloadifnecessary(filename)
+
+        if self.filename:
+            self.reloadifnecessary(self.filename)
         
     
     def reloadifnecessary(self, filename):
@@ -64,6 +64,7 @@ class FuFileCache(object):
     def filechanged(self, filename):
         statinfo=os.stat(filename)
         ctime=statinfo.st_ctime
+        self.logger.debug('Filename %s stat: ctime=%s recorded ctime=%s' % (filename, ctime, self.lastreload))
         if ctime>self.lastreload:
             return True
         return False
@@ -84,19 +85,19 @@ class PyGeoIPCache(FuFileCache):
     def __init__(self, filename, **kw):
         FuFileCache.__init__(self, filename, **kw)
         self.geoip = None
-        self.filename = filename
         
         
     def _reallyloadData(self, filename):
         self.geoip = pygeoip.GeoIP(filename)
+        self.logger.debug('loaded geoip database %s' % filename)
         
     
     def country_code(self, ip):
         self.reloadifnecessary(self.filename)
-        cc = u''
         try:
             cc = self.geoip.country_code_by_addr(ip)
-        except:
+        except Exception as e:
+            self.logger.debug('Failed to get country code for %s: %s' % (ip, str(e)))
             cc = None
         return cc
     
@@ -124,7 +125,6 @@ class GeoIPCache(PyGeoIPCache):
                 country = GeoIP.country_names[cc]
         return country
     
-    
         
         
 class GeoIPPlugin(ScannerPlugin):
@@ -132,7 +132,12 @@ class GeoIPPlugin(ScannerPlugin):
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
-        self.geoip = None
+        if have_geoip == LIB_GEOIP_PYGEOIP:
+            self.geoip = PyGeoIPCache(None)
+        elif have_geoip == LIB_GEOIP_MAXMIND:
+            self.geoip = GeoIPCache(None)
+        else:
+            self.geoip = None
         
         self.requiredvars={
             'database':{
@@ -156,6 +161,18 @@ class GeoIPPlugin(ScannerPlugin):
                 'description':'message displayed to client on reject. use ${cc} as placeholder for country code and ${cn} for English country name',
             },
         }
+
+
+
+    def _get_list(self, list_type='blacklist'):
+        data = self.config.get(self.section, list_type).strip()
+        mylist = []
+        if data:
+            sep = ' '
+            if ',' in data:
+                sep = ','
+            mylist = [i.strip() for i in data.split(sep)]
+        return mylist
         
         
         
@@ -166,24 +183,16 @@ class GeoIPPlugin(ScannerPlugin):
         database = self.config.get(self.section, 'database')
         if not os.path.exists(database):
             return DUNNO
-        if not self.geoip and have_geoip == LIB_GEOIP_PYGEOIP:
-            self.geoip = PyGeoIPCache(database)
-        elif not self.geoip and have_geoip == LIB_GEOIP_MAXMIND:
-            self.geoip = GeoIPCache(database)
+        self.geoip.filename = database
+        self.geoip.reloadifnecessary(database)
         
         client_address=suspect.get_value('client_address')
         if client_address is None:
             self.logger.info('No client address found')
             return DUNNO
         
-        bl = self.config.get(self.section, 'blacklist').strip()
-        blacklist = []
-        if bl:
-            blacklist = [i.strip() for i in bl.split(',')]
-        wl = self.config.get(self.section, 'whitelist').strip()
-        whitelist = []
-        if wl:
-            whitelist = [i.strip() for i in wl.split(',')]
+        blacklist = self._get_list('blacklist')
+        whitelist = self._get_list('whitelist')
         on_unknown = self.config.get(self.section, 'on_unknown')
         unknown = DUNNO
         if on_unknown.strip().upper() == 'REJECT':
@@ -203,7 +212,8 @@ class GeoIPPlugin(ScannerPlugin):
         if action == REJECT:
             rejmsg = self.config.get(self.section, 'reject_message').strip()
             message = apply_template(rejmsg, suspect, dict(cn=cn, cc=cc))
-            
+
+        self.logger.debug('IP: %s country: %s action: %s' % (client_address, cc, action))
         return action, message
         
         
@@ -224,11 +234,25 @@ class GeoIPPlugin(ScannerPlugin):
         if not os.path.exists(database):
             print 'Could not find geoip database file - this plugin will do nothing'
             lint_ok = False
+        else:
+            print 'Using GeoIP Database in %s' % database
         
         if not self.checkConfig():
             print 'Error checking config'
             lint_ok = False
-        
+
+        blacklist = self._get_list('blacklist')
+        whitelist = self._get_list('whitelist')
+        if not blacklist and not whitelist:
+            print 'Neither black nor white list defined'
+            lint_ok = False
+        elif blacklist and whitelist:
+            print 'Black and white list defined - only using blacklist'
+            lint_ok = False
+        else:
+            print 'Blacklist: %s' % blacklist
+            print 'Whitelist: %s' % whitelist
+
         return lint_ok
         
         
