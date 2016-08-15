@@ -213,7 +213,7 @@ class AddressCheck(ScannerPlugin):
                     return REJECT,msg
             
         else:
-            self.logger.info('Server %s for domain %s: blacklisting for %s seconds (%s)'%(relay,domain,servercachetime,blreason))
+            self.logger.info('Server %s for domain %s: blacklisting for %s seconds (%s) in stage %s'%(relay,domain,servercachetime,blreason, result.stage))
             self.cache.blacklist(domain, relay, servercachetime, result.stage, blreason)
         return DUNNO,None
     
@@ -471,9 +471,10 @@ class MySQLCache(CallAheadCacheInterface):
         """Put a domain/relay combination on the recipient verification blacklist for a certain amount of time"""
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
 
-        statement="""INSERT INTO ca_blacklist (domain,relay,expiry_ts,check_stage,reason) VALUES (:domain,:relay,now()+interval :interval second,:checkstag,:reason)
-        ON DUPLICATE KEY UPDATE expiry_ts=now()+interval :interval second,check_stage=:checkstage,reason=:reason
-        """
+        statement="""INSERT INTO ca_blacklist (domain,relay,expiry_ts,check_stage,reason)
+                    VALUES (:domain,:relay,now()+interval :interval second,:checkstage,:reason)
+                    ON DUPLICATE KEY UPDATE expiry_ts=now()+interval :interval second,check_stage=:checkstage,reason=:reason
+                    """
         values={
                 'domain':domain,
                 'relay':relay,
