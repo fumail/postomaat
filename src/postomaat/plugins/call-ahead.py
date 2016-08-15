@@ -7,33 +7,49 @@ if __name__ =='__main__':
 
 from postomaat.shared import *
 from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
-from threading import Lock
-import time
 import smtplib
 from string import Template
 import logging
-import datetime
 
 HAVE_DNSPYTHON=False
 try:
-    import DNS
+    from dns import resolver
     HAVE_DNSPYTHON=True
+except ImportError:
+    pass
+
+HAVE_PYDNS=False
+try:
+    import DNS
+    HAVE_PYDNS=True
     DNS.DiscoverNameServers()
-    
 except ImportError:
     pass
 
 
+
 def mxlookup(domain):
-    if HAVE_DNSPYTHON:
-        mxrecs=[]
-        mxrequest = DNS.mxlookup(domain)
-        for dataset in mxrequest:
-            if type(dataset) == tuple:
-                mxrecs.append(dataset)
-                
-        mxrecs.sort() #automatically sorts by priority
-        return [x[1] for x in mxrecs]
+    try:
+        if HAVE_DNSPYTHON:
+            mxrecs = []
+            mxrequest = resolver.query(domain, 'MX')
+            for rec in mxrequest:
+                mxrecs.append(rec.to_text())
+            mxrecs.sort() #automatically sorts by priority
+            return [x.split(None,1)[-1] for x in mxrecs]
+        
+        elif HAVE_PYDNS:
+            mxrecs=[]
+            mxrequest = DNS.mxlookup(domain)
+            for dataset in mxrequest:
+                if type(dataset) == tuple:
+                    mxrecs.append(dataset)
+                    
+            mxrecs.sort() #automatically sorts by priority
+            return [x[1] for x in mxrecs]
+        
+    except Exception:
+        pass
     
     #TODO: other dns libraries?
     
