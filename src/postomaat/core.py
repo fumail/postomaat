@@ -372,12 +372,20 @@ class MainController(object):
         self.logger.info('Shutdown complete')
         self.logger.info('Remaining threads: %s' %threading.enumerate())
         
-   
-   
+    def _lint_dependencies(self, fc):
+        print(fc.strcolor('Checking dependencies...', 'magenta'))
+        try:
+            import sqlalchemy
+            print(fc.strcolor('sqlalchemy: Version %s installed' % sqlalchemy.__version__, 'green'))
+        except:
+            print(fc.strcolor('sqlalchemy: not installed', 'yellow') +
+                  " Optional dependency, required if you want to enable any database lookups")
+        
     def lint(self):
         errors=0
         from postomaat.funkyconsole import FunkyConsole
         fc=FunkyConsole()
+        self._lint_dependencies(fc)
         print fc.strcolor('Loading plugins...','magenta')
         if not self.load_plugins():
             print fc.strcolor('At least one plugin failed to load','red')
