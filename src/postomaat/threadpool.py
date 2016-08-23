@@ -1,4 +1,4 @@
-#   Copyright 2009-2015 Oli Schacher
+#   Copyright 2009-2016 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,10 @@
 #
 import threading
 import time
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import logging
 
 
@@ -25,13 +28,13 @@ class ThreadPool(threading.Thread):
     def __init__(self, minthreads=1, maxthreads=20, queuesize=100):
         self.workers = []
         self.queuesize = queuesize
-        self.tasks = Queue.Queue(queuesize)
+        self.tasks = queue.Queue(queuesize)
         self.minthreads = minthreads
         self.maxthreads = maxthreads
         assert self.minthreads > 0
         assert self.maxthreads > self.minthreads
 
-        self.logger = logging.getLogger('postomaat.threadpool')
+        self.logger = logging.getLogger('%s.threadpool' % __package__)
         self.threadlistlock = threading.Lock()
         self.checkinterval = 10
         self.threadcounter = 0
@@ -39,7 +42,8 @@ class ThreadPool(threading.Thread):
         self.laststats = 0
         self.statinverval = 60
         threading.Thread.__init__(self)
-        self.setDaemon(False)
+        self.name = 'Threadpool'
+        self.daemon = False
         self.start()
 
     @property
@@ -141,12 +145,12 @@ class ThreadPool(threading.Thread):
 class Worker(threading.Thread):
 
     def __init__(self, workerid, pool):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name='Pool worker %s' % workerid)
         self.workerid = workerid
         self.birth = time.time()
         self.pool = pool
         self.stayalive = True
-        self.logger = logging.getLogger('postomaat.threads.worker.%s' % workerid)
+        self.logger = logging.getLogger('%s.threads.worker.%s' % (__package__, workerid))
         self.logger.debug('thread init')
         self.noisy = False
         self.setDaemon(False)
@@ -173,7 +177,7 @@ class Worker(threading.Thread):
                 self.logger.debug('Doing work')
             try:
                 sesshandler.handlesession(self)
-            except Exception, e:
+            except Exception as e:
                 self.logger.error('Unhandled Exception : %s' % e)
             self.threadinfo = 'task completed'
 

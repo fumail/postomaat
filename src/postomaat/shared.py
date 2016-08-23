@@ -15,7 +15,6 @@
 import logging
 import time
 import socket
-import random
 import ConfigParser
 import os
 import datetime
