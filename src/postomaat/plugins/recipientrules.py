@@ -1,8 +1,6 @@
+# -*- coding: utf-8 -*-
 
-import os
-import time
 import re
-import logging
 from postomaat.shared import *
 
 lg=logging.getLogger('postomaat.plugins.recipientrules')

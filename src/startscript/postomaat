@@ -27,8 +27,6 @@ import sys
 from postomaat.core import MainController
 import signal
 import os
-import pwd
-import grp
 import optparse
 
 controller=None
