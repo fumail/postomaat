@@ -15,10 +15,13 @@
 import logging
 import time
 import socket
-import ConfigParser
 import os
 import datetime
 from string import Template
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 
 #answers
 REJECT="reject"
@@ -60,14 +63,7 @@ def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
     if values==None:
         values={}
         
-    values = dict(suspect.values.items()+values.items())
-    values['timestamp']=int(time.time())
-    values['from_address']=suspect.from_address
-    values['to_address']=suspect.to_address
-    values['from_domain']=suspect.from_domain
-    values['to_domain']=suspect.to_domain
-    values['date']=str(datetime.date.today())
-    values['time']=time.strftime('%X')        
+    default_template_values(suspect, values)
     
     if valuesfunction!=None:
         values=valuesfunction(values)
@@ -80,6 +76,26 @@ def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
     template = Template(templatecontent)
     message= template.safe_substitute(values)
     return message
+
+
+def default_template_values(suspect, values=None):
+    """Return a dict with default template variables applicable for this suspect
+    if values is not none, fill the values dict instead of returning a new one"""
+
+    if values == None:
+        values = {}
+        
+    values = dict(suspect.values.items()+values.items())
+    values['timestamp']=int(time.time())
+    values['from_address']=suspect.from_address
+    values['to_address']=suspect.to_address
+    values['from_domain']=suspect.from_domain
+    values['to_domain']=suspect.to_domain
+    values['date']=str(datetime.date.today())
+    values['time']=time.strftime('%X')
+    return values
+
+
 
 class Suspect(object):
     """
@@ -187,48 +203,57 @@ class BasicPlugin(object):
         return logging.getLogger(loggername)
     
     def lint(self):
-        return self.checkConfig()
-    
+        return self.check_config()
+
     def checkConfig(self):
-        allOK=True
-        
-        #old config style
-        if type(self.requiredvars)==tuple or type(self.requiredvars)==list:
+        """old name for check_config"""
+        return self.check_config()
+    
+    def check_config(self):
+        """Print missing / non-default configuration settings"""
+        allOK = True
+
+        # old config style
+        if type(self.requiredvars) == tuple or type(self.requiredvars) == list:
             for configvar in self.requiredvars:
-                if type(self.requiredvars)==tuple:
-                    (section,config)=configvar
+                if type(self.requiredvars) == tuple:
+                    (section, config) = configvar
                 else:
-                    config=configvar
-                    section=self.section                   
+                    config = configvar
+                    section = self.section
                 try:
-                    var=self.config.get(section,config)
-                except ConfigParser.NoOptionError:
-                    print "Missing configuration value [%s] :: %s"%(section,config)
-                    allOK=False
-                except ConfigParser.NoSectionError:
-                    print "Missing configuration section %s"%(section)
-                    allOK=False    
-        
-        #new config style
-        if type(self.requiredvars)==dict:
-            for config,infodic in self.requiredvars.iteritems():
-                section=self.section
+                    var = self.config.get(section, config)
+                except configparser.NoOptionError:
+                    print("Missing configuration value [%s] :: %s" % (
+                        section, config))
+                    allOK = False
+                except configparser.NoSectionError:
+                    print("Missing configuration section %s" % (section))
+                    allOK = False
+
+        # new config style
+        if type(self.requiredvars) == dict:
+            for config, infodic in self.requiredvars.items():
+                section = self.section
                 if 'section' in infodic:
-                    section=infodic['section']
-                    
+                    section = infodic['section']
+
                 try:
-                    var=self.config.get(section,config)
+                    var = self.config.get(section, config)
                     if 'validator' in infodic:
                         if not infodic["validator"](var):
-                            print "Validation failed for [%s] :: %s"%(section,config)
-                            allOK=False          
-                except ConfigParser.NoSectionError:
-                    print "Missing configuration section [%s] :: %s"%(section,config)
-                    allOK=False
-                except ConfigParser.NoOptionError:
-                    print "Missing configuration value [%s] :: %s"%(section,config)
-                    allOK=False
-        
+                            print("Validation failed for [%s] :: %s" % (
+                                section, config))
+                            allOK = False
+                except configparser.NoSectionError:
+                    print("Missing configuration section [%s] :: %s" % (
+                        section, config))
+                    allOK = False
+                except configparser.NoOptionError:
+                    print("Missing configuration value [%s] :: %s" % (
+                        section, config))
+                    allOK = False
+
         return allOK
 
 
@@ -273,7 +298,7 @@ class ScannerPlugin(BasicPlugin):
         
             
 def get_config(postomaatconfigfile=None,dconfdir=None):
-    newconfig=ConfigParser.ConfigParser()
+    newconfig=configparser.ConfigParser()
     logger=logging.getLogger('postomaat.shared')
     
     if postomaatconfigfile==None:
@@ -332,6 +357,12 @@ class FileList(object):
 
         if lowercase:
             self.linefilters.append(lambda x: x.lower())
+
+        if additional_filters != None:
+            if type(additional_filters) == list:
+                self.linefilters.extend(additional_filters)
+            else:
+                self.linefilters.append(additional_filters)
 
         if filename != None:
             self._reload_if_necessary()
