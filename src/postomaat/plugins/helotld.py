@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from postomaat.shared import ScannerPlugin, DUNNO,apply_template
-from postomaat.filetools import ListConfigFile
+from postomaat.shared import FileList
 import os
 
 class HELOTLDPlugin(ScannerPlugin):
@@ -49,16 +49,16 @@ class HELOTLDPlugin(ScannerPlugin):
         #initialize loaders
         tld_file=self.config.get(self.section,'tldfile')
         if self.tld_loader==None:
-            self.tld_loader=ListConfigFile(tld_file,lowercase=True,reload_after=3600)
+            self.tld_loader=FileList(tld_file,lowercase=True,minimum_time_between_reloads=3600)
 
-        if helo_tld in self.tld_loader.get_content():
+        if helo_tld in self.tld_loader.get_list():
             return DUNNO,''
 
         exceptionfile=self.config.get(self.section,'exceptionfile')
         if self.exception_loader==None:
-            self.exception_loader=ListConfigFile(exceptionfile,lowercase=True,reload_after=10)
+            self.exception_loader=FileList(exceptionfile,lowercase=True,minimum_time_between_reloads=10)
 
-        if helo_tld in self.exception_loader.get_content():
+        if helo_tld in self.exception_loader.get_list():
             return DUNNO,''
 
         message = apply_template(self.config.get(self.section,'messagetemplate'),suspect,dict(helo_tld=helo_tld))

@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template
-from postomaat.filetools import ListConfigFile
+from postomaat.shared import FileList
 try:
     import spf
     have_spf = True
@@ -78,10 +78,10 @@ class SPFPlugin(ScannerPlugin):
         if ip_whitelist_file is not None:
             plainlist = []
             if self.ip_whitelist_loader is None:
-                self.ip_whitelist_loader=ListConfigFile(ip_whitelist_file,lowercase=True)
+                self.ip_whitelist_loader=FileList(ip_whitelist_file,lowercase=True)
 
             if self.ip_whitelist_loader.file_changed():
-                plainlist=self.ip_whitelist_loader.get_content()
+                plainlist=self.ip_whitelist_loader.get_list()
 
                 if have_netaddr:
                     self.ip_whitelist=[IPNetwork(x) for x in plainlist]
@@ -121,7 +121,7 @@ class SPFPlugin(ScannerPlugin):
         selective_sender_domain_file=self.config.get(self.section,'domain_selective_spf_file')
         if selective_sender_domain_file!='':
             if self.selective_domain_loader is None:
-                self.selective_domain_loader=ListConfigFile(selective_sender_domain_file,lowercase=True)
+                self.selective_domain_loader=FileList(selective_sender_domain_file,lowercase=True)
             try:
                 sender_domain = extract_domain(sender_email)
                 if sender_domain is None:
@@ -129,7 +129,7 @@ class SPFPlugin(ScannerPlugin):
             except ValueError as e:
                 self.logger.warning(str(e))
                 return DUNNO
-            if not sender_domain.lower() in self.selective_domain_loader.get_content():
+            if not sender_domain.lower() in self.selective_domain_loader.get_list():
                 return DUNNO
 
         result, explanation = spf.check2(client_address, sender_email, helo_name)
