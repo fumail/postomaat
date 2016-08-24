@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #   Copyright 2013 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,35 +15,31 @@
 #
 #
 
-BASENAME="postomaat" #project name (root logger etc)
-CONFDIR="/etc/%s"%BASENAME
 import logging
 import sys
 import os
 import thread
 import socket
-import string
 import time
 import traceback
-import datetime
-import unittest
 import ConfigParser
 import re
 import inspect
-from postomaat.plugins import *
-from postomaat.shared import *
+from postomaat.shared import DUNNO, Suspect
 import threading
 from threadpool import ThreadPool
 import code
 
 
+
 HOSTNAME=socket.gethostname()
+
 
 class SessionHandler(object):
     """thread handling one message"""
     def __init__(self,incomingsocket,config,plugins):
         self.incomingsocket=incomingsocket
-        self.logger=logging.getLogger("%s.SessionHandler"%BASENAME)
+        self.logger=logging.getLogger("%s.SessionHandler" % __package__)
         self.action=DUNNO
         self.arg=""
         self.config=config
@@ -50,7 +47,7 @@ class SessionHandler(object):
         self.workerthread = None
 
     def set_threadinfo(self, status):
-        if self.workerthread != None:
+        if self.workerthread is not None:
             self.workerthread.threadinfo = status
 
         
@@ -91,9 +88,9 @@ class SessionHandler(object):
             
         except KeyboardInterrupt:
             sys.exit(0)    
-        except Exception, e:
+        except Exception as e:
             self.logger.error('Exception: %s'%e)
-            if sess!=None:
+            if sess is not None:
                 sess.closeconn()
         self.logger.debug('Session finished')
 
@@ -111,7 +108,7 @@ class SessionHandler(object):
                 else:
                     result=ans
                 
-                if result==None:
+                if result is None:
                     result=DUNNO
                 else:
                     result=result.strip().lower()
@@ -124,7 +121,7 @@ class SessionHandler(object):
                     self.logger.debug('Plugin makes a decision other than DUNNO - not running any other plugins')
                     break
                 
-            except Exception,e:
+            except Exception as e:
                 exc=traceback.format_exc()
                 self.logger.error('Plugin %s failed: %s'%(str(plugin),exc))
                 
@@ -223,7 +220,7 @@ class MainController(object):
         
     def _logger(self):
         myclass=self.__class__.__name__
-        loggername="%s.%s"%(BASENAME,myclass)
+        loggername="%s.%s"%(__package__, myclass)
         return logging.getLogger(loggername)
     
     def startup(self):
@@ -319,7 +316,7 @@ class MainController(object):
             if not alreadyRunning:
                 server=PolicyServer(self,port=port,address=self.config.get('main', 'bindaddress'))
                 thread.start_new_thread(server.serve, ())
-                self.smtpservers.append(server)
+                self.servers.append(server)
         
         servercopy=self.servers[:] 
         for serv in servercopy:
@@ -557,12 +554,12 @@ class MainController(object):
             
 class PolicyServer(object):    
     def __init__(self, controller,port=10025,address="127.0.0.1",plugins=None):
-        self.logger=logging.getLogger("%s.proto.incoming.%s"%(BASENAME,port))
+        self.logger=logging.getLogger("%s.proto.incoming.%s"%(__package__, port))
         self.logger.debug('Starting incoming policy server on Port %s'%port)
         self.port=port
         self.controller=controller
         self.stayalive=1
-        if plugins==None:
+        if plugins is None:
             self.plugins=controller.plugins
         else:
             self.plugins=plugins
@@ -572,7 +569,7 @@ class PolicyServer(object):
             self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self._socket.bind((address, port))
             self._socket.listen(5)
-        except Exception,e:
+        except Exception as e:
             self.logger.error('Could not start incoming policy server: %s'%e)
             sys.exit(1)
    
@@ -587,8 +584,6 @@ class PolicyServer(object):
         controller=self.controller
         
         self.logger.info('policy server running on port %s'%self.port)
-        if use_multithreading:
-                threadpool=self.controller.threadpool
         while self.stayalive:
             try:
                 self.logger.debug('Waiting for connection...')
@@ -599,10 +594,10 @@ class PolicyServer(object):
                 self.logger.debug('Incoming connection from %s'%str(nsd[1]))
                 if use_multithreading:
                     #this will block if queue is full
-                    threadpool.add_task(engine)
+                    self.controller.threadpool.add_task(engine)
                 else:
                     engine.handlesession()
-            except Exception,e:
+            except Exception as e:
                 self.logger.error('Exception in serve(): %s'%str(e))
 
                  
@@ -610,8 +605,8 @@ class PolicydSession(object):
     def __init__(self, socket,config):
         self.config=config
        
-        self.socket = socket;
-        self.logger=logging.getLogger("%s.policysession"%BASENAME)
+        self.socket = socket
+        self.logger=logging.getLogger("%s.policysession" % __package__)
         self.file=self.socket.makefile('r')
         self.values={}
         
@@ -634,7 +629,7 @@ class PolicydSession(object):
             if line=='':
                 return True
             try:
-                (key,val)=line.split('=',1)
+                key,val=line.split('=',1)
                 self.values[key]=val
             except Exception,e:
                 self.logger.error('Invalid Protocol line: %s'%line)
