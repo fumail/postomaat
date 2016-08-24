@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #   Copyright 2012 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,4 +14,4 @@
 # limitations under the License.
 #
 #
-POSTOMAAT_VERSION="0.6.0-svnimport"
+POSTOMAAT_VERSION="0.6.6"
