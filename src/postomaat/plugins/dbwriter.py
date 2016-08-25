@@ -64,14 +64,14 @@ class DBWriter(ScannerPlugin):
         dbcolumns=",".join(requiredcolumnnames)
         try:
             conn=get_session(self.config.get(self.section,'dbconnection'))
-        except Exception,e:
+        except Exception as e:
             print "DB Connection failed. Reason: %s"%(str(e))
             return False
         
         sql_query="SELECT %s FROM %s LIMIT 0,1"%(dbcolumns,tablename)
         try:
             conn.execute(sql_query)
-        except Exception,e:
+        except Exception as e:
             print "Table or field configuration error: %s"%str(e)
             return False
         return True
@@ -82,7 +82,7 @@ class DBWriter(ScannerPlugin):
             tablename=self.config.get(self.section,'table')
             
             sender=suspect.get_value('sender')
-            if sender!=None:
+            if sender is not None:
                 from_address=strip_address(sender)
                 from_domain=extract_domain(from_address)
             else:
@@ -90,7 +90,7 @@ class DBWriter(ScannerPlugin):
                 from_domain=None
           
             recipient=suspect.get_value('recipient')
-            if recipient!=None:
+            if recipient is not None:
                 to_address=strip_address(recipient)
                 to_domain=extract_domain(to_address)
             else:
@@ -130,7 +130,7 @@ class DBWriter(ScannerPlugin):
             #print data
             conn=get_session(self.config.get(self.section,'dbconnection'))
             conn.execute(sql_insert,data)
-        except Exception,e:
+        except Exception as e:
             self.logger.error("DB Writer plugin failed, Log not written. : %s"%str(e))
             
         return DUNNO,None

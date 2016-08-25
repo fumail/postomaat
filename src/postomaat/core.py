@@ -244,7 +244,7 @@ class MainController(object):
         if not self.load_plugins():
             sys.exit(1)
 
-        if port!=None:
+        if port is not None:
             plugins=None
             ports=self.config.get('main', 'incomingport')
             for portconfig in ports.split():
@@ -261,7 +261,7 @@ class MainController(object):
         else:
             plugins=self.plugins
 
-        if plugins==None:
+        if plugins is None:
             raise Exception("no plugin configuration for current port selection")
         sesshandler=SessionHandler(None, self.config, plugins)
         sesshandler.run_plugins(suspect, plugins)
@@ -284,7 +284,7 @@ class MainController(object):
         try:
             import sqlalchemy
             print(fc.strcolor('sqlalchemy: Version %s installed' % sqlalchemy.__version__, 'green'))
-        except:
+        except ImportError:
             print(fc.strcolor('sqlalchemy: not installed', 'yellow') +
                   " Optional dependency, required if you want to enable any database lookups")
         
@@ -313,7 +313,7 @@ class MainController(object):
             print "Linting Plugin ",fc.strcolor(str(plugin),'cyan'),'Config section:',fc.strcolor(str(plugin.section),'cyan')
             try:
                 result=plugin.lint()
-            except Exception,e:
+            except Exception as e:
                 print "ERROR: %s"%e
                 result=False
             
@@ -397,7 +397,7 @@ class MainController(object):
             if plug=="":
                 continue
             m=config_re.match(plug)
-            if m==None:
+            if m is None:
                 self.logger.error('Invalid Plugin Syntax: %s'%plug)
                 allOK=False
                 continue
@@ -406,8 +406,8 @@ class MainController(object):
             try:
                 plugininstance=self._load_component(structured_name,configsection=configoverride)
                 pluglist.append(plugininstance)
-            except Exception,e:
-                self._logger().error('Could not load plugin %s : %s'%(structured_name,e))
+            except Exception as e:
+                self._logger().error('Could not load plugin %s : %s'%(structured_name, str(e)))
                 exc=traceback.format_exc()
                 self._logger().error(exc)
                 allOK=False
@@ -422,7 +422,7 @@ class MainController(object):
         for component_name in component_names[1:]:
             mod = getattr(mod, component_name)
         
-        if configsection==None:
+        if configsection is None:
             plugininstance=mod(self.config)
         else:
             #check if plugin supports config override

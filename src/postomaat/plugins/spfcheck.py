@@ -5,13 +5,13 @@ from postomaat.shared import FileList
 try:
     import spf
     have_spf = True
-except:
+except ImportError:
     have_spf = False
     
 try:
     from netaddr import IPAddress, IPNetwork
     have_netaddr = True
-except:
+except ImportError:
     have_netaddr = False
     
 

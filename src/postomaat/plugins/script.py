@@ -87,7 +87,7 @@ example script:
             try:
                 source=open(script,'r').read()
                 compile(source,script,'exec')
-            except:
+            except Exception:
                 trb=traceback.format_exc()
                 print "Script %s failed to compile: %s"%(script,trb)
                 return False
@@ -125,7 +125,7 @@ example script:
             message=scriptlocals['message']
         except Stopped:
             pass
-        except:
+        except Exception:
             trb=traceback.format_exc()
             self.logger.error("Script %s failed: %s"%(filename,trb))
             

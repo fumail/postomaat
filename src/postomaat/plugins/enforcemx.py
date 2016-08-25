@@ -26,7 +26,7 @@ from threading import Lock
 try:
     from netaddr import IPAddress, IPNetwork
     have_netaddr = True
-except:
+except ImportError:
     have_netaddr = False
 
 from postomaat.shared import ScannerPlugin, DUNNO, DEFER_IF_PERMIT, REJECT, strip_address, extract_domain
@@ -207,7 +207,7 @@ class EnforceMX(ScannerPlugin):
     
     def _examine_mx(self, suspect, client_address, client_name):
         to_address=suspect.get_value('recipient')
-        if to_address==None:
+        if to_address is None:
             self.logger.warning('No RCPT address found')
             return DEFER_IF_PERMIT,'internal policy error (no rcpt address)'
         
@@ -233,7 +233,7 @@ class EnforceMX(ScannerPlugin):
             
     def _examine_spf(self, suspect, client_address, client_name):
         from_address=suspect.get_value('sender')
-        if from_address==None:
+        if from_address is None:
             self.logger.warning('No FROM address found')
             return DEFER_IF_PERMIT,'internal policy error (no from address)'
         

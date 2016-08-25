@@ -64,7 +64,7 @@ class ValueChecker(object):
         }
         
     def get_value(self,name=None,defval=None):
-        if name==None:
+        if name is None:
             name=self.pfixname
             
         if name not in self.values:
@@ -81,7 +81,7 @@ class ValueChecker(object):
         if self.pfixname not in numeric:
             self.logger.warn("can not use use < and > comparison operator on non-numeric value %s"%self.pfixname)
             return False
-        if self.value==None:
+        if self.value is None:
             return False
         numval=int(self.value)
         return numval>self.checkval
@@ -90,7 +90,7 @@ class ValueChecker(object):
         if self.pfixname not in numeric:
             self.logger.warn("can not use use < and > comparison operator on non-numeric value %s"%self.pfixname)
             return False
-        if self.value==None:
+        if self.value is None:
             return False
         numval=int(self.value)
         return numval<self.checkval
@@ -98,7 +98,7 @@ class ValueChecker(object):
     def fn_regexmatches(self):
         v=str(self.value)
         reflags=0
-        if self.modifiers!=None:
+        if self.modifiers is not None:
             for flag in self.modifiers:
                 flag=flag.lower()
                 if flag=='i':
@@ -110,10 +110,10 @@ class ValueChecker(object):
         
         try:
             match= re.search(self.checkval, v,reflags)
-        except Exception,e:
+        except Exception as e:
             match = None
             logging.error(e)
-        return match!=None
+        return match is not None
     
     def __bool__(self):
         func= self.funcs[self.op]
@@ -224,7 +224,7 @@ class ComplexRuleParser(object):
         self.rules=[]
         
     def rules_from_string(self,all_rules):
-        if all_rules==None:
+        if all_rules is None:
             return
         all_ok=True
         for line in all_rules.splitlines():
@@ -283,7 +283,7 @@ class FileReloader(object):
         self.lastreload=0
         self.logger=logging.getLogger('postomaat.complexfilereloader')
         self.content=None
-        if filename!=None:
+        if filename is not None:
             self.reloadifnecessary()
         
         
@@ -298,7 +298,7 @@ class FileReloader(object):
         return False
     
     def filechanged(self):
-        if self.filename==None:
+        if self.filename is None:
             return False
         statinfo=os.stat(self.filename)
         ctime=statinfo.st_ctime

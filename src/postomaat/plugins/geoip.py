@@ -22,11 +22,11 @@ LIB_GEOIP_MAXMIND = 2
 try:
     import pygeoip
     have_geoip = LIB_GEOIP_PYGEOIP
-except:
+except ImportError:
     try:
         import GeoIP
         have_geoip = LIB_GEOIP_MAXMIND
-    except:
+    except ImportError:
         have_geoip = LIB_GEOIP_NONE
 
 

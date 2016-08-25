@@ -25,9 +25,9 @@ class IdentityCrisis(ScannerPlugin):
         retmessage=""
  
         revclient=suspect.get_value('reverse_client_name')
-        if revclient==None or revclient.strip()=='unknown' or revclient.strip()=='':
+        if revclient is None or revclient.strip()=='unknown' or revclient.strip()=='':
             helo_name=suspect.get_value('helo_name')
-            if helo_name==None or self.pattern.match(helo_name)!=None:
+            if helo_name is None or self.pattern.match(helo_name) is not None:
                 retaction=self.config.get(self.section,'action').strip()
                 retmessage=self.config.get(self.section,'message').strip()
                 
@@ -77,7 +77,7 @@ class CreativeTLD(ScannerPlugin):
         self.filelist.filename=self.config.get(self.section,'domainsfile')
         tlds = self.filelist.get_list()
 
-        if revclient==None or revclient.strip()=='unknown' or '.' not in revclient:
+        if revclient is None or revclient.strip()=='unknown' or '.' not in revclient:
             return DUNNO,''
 
         tld=revclient.split('.')[-1].lower()

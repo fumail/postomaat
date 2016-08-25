@@ -92,7 +92,7 @@ class AddressCheck(ScannerPlugin):
         try:
             (poscount,negcount)=self.cache.get_total_counts()
             print "Addresscache: %s positive entries, %s negative entries"%(poscount,negcount)
-        except Exception,e:
+        except Exception as e:
             print "DB Connection failed: %s"%str(e)
             return False
             
@@ -103,12 +103,12 @@ class AddressCheck(ScannerPlugin):
   
     def examine(self,suspect):
         from_address=suspect.get_value('sender')
-        if from_address==None:
+        if from_address is None:
             self.logger.error('No FROM address found')
             return DUNNO
       
         address=suspect.get_value('recipient')
-        if address==None:
+        if address is None:
             self.logger.error('No TO address found')
             return DUNNO
         
@@ -122,7 +122,7 @@ class AddressCheck(ScannerPlugin):
             self.logger.error('Could not connect to database')
             return DUNNO
 
-        if entry!=None:
+        if entry is not None:
             (positive,message)=entry
             
             if positive:
@@ -154,7 +154,7 @@ class AddressCheck(ScannerPlugin):
         
         #check blacklist
         relays=test.get_relays(domain,domainconfig)
-        if relays==None or len(relays)==0:
+        if relays is None or len(relays)==0:
             self.logger.error("No relay for domain %s found!"%domain)
             return DUNNO,None
         
@@ -319,19 +319,19 @@ class SMTPTest(object):
         defval=self.config.get('ca_default',key)
         
         theval=defval
-        if domainconfig==None: #nothing from sql
+        if domainconfig is None: #nothing from sql
             
             #check config file overrides
             configbackend=ConfigFileBackend(self.config)
             
             #ask the config backend if we have a special server config
             backendoverride=configbackend.get_domain_config_value(domain, key)
-            if backendoverride!=None:
+            if backendoverride is not None:
                 theval=backendoverride
         elif key in domainconfig:
             theval=domainconfig[key]
         
-        if templatedict!=None:
+        if templatedict is not None:
             theval=Template(theval).safe_substitute(templatedict) 
         
         return theval
@@ -360,7 +360,7 @@ class SMTPTest(object):
                     fdomain,ftarget=line.split()
                     if domain.lower()==fdomain.lower():
                         return [ftarget,]
-            except Exception,e:
+            except Exception as e:
                 self.logger.error("Txt lookup failed: %s"%str(e))
         else:
             self.logger.error('unknown relay lookup type: %s'%tp)
@@ -374,7 +374,7 @@ class SMTPTest(object):
         result=SMTPTestResult()
         result.relay=relay
         
-        if mailfrom==None:
+        if mailfrom is None:
             mailfrom=""
         
 
@@ -392,7 +392,7 @@ class SMTPTest(object):
                 result.state=SMTPTestResult.TEST_FAILED
                 result.errormessage="connection was not accepted: %s"%msg
                 return result
-        except Exception,e:
+        except Exception as e:
             result.errormessage=str(e)
             result.state=SMTPTestResult.TEST_FAILED
             return result
@@ -421,7 +421,7 @@ class SMTPTest(object):
                 result.state=SMTPTestResult.TEST_FAILED
                 result.errormessage="MAIL FROM was not accepted: %s"%msg
                 return result
-        except Exception,e:
+        except Exception as e:
             result.errormessage=str(e)
             result.state=SMTPTestResult.TEST_FAILED
             return result
@@ -442,7 +442,7 @@ class SMTPTest(object):
                 
                 putmsg="relay %s said:%s"%(relay,msg)
                 result.rcptoreplies[addr]=(addrstate,code,putmsg)
-        except Exception,e:
+        except Exception as e:
             result.errormessage=str(e)
             result.state=SMTPTestResult.TEST_FAILED
             return result
@@ -451,7 +451,7 @@ class SMTPTest(object):
         
         try:
             smtp.quit()
-        except Exception,e:
+        except Exception as e:
             pass
         return result   
 
@@ -806,7 +806,7 @@ class SMTPTestCommandLineInterface(object):
         print "Checking address cache..."
         cache=MySQLCache(config)
         entry=cache.get_address(address)
-        if entry!=None:
+        if entry is not None:
             (positive,message)=entry
             tp="negative"
             if positive:
@@ -816,8 +816,8 @@ class SMTPTestCommandLineInterface(object):
             print "No cache entry for %s"%address
         
         test=SMTPTest(config)
-        relays=test.get_relays(domain,domainconfig)
-        if relays==None:
+        relays=test.get_relays(domain,domainconfig) # type: list
+        if relays is None:
                 print "No relay for domain %s found!"%domain
                 sys.exit(1)
         print "Relays for domain %s are %s"%(domain,relays)
@@ -890,7 +890,7 @@ class SMTPTestCommandLineInterface(object):
         config=get_config()
         cache=MySQLCache(config)
         domain=args[0]
-        rows=cache.get_all_addresses(domain)
+        rows=cache.get_all_addresses(domain) # type: list
         
         print "Cache for domain %s (-: negative entry, +: positive entry)"%domain
         for row in rows:
@@ -908,7 +908,7 @@ class SMTPTestCommandLineInterface(object):
             sys.exit(1)
         config=get_config()
         cache=MySQLCache(config)
-        rows=cache.get_blacklist()
+        rows=cache.get_blacklist() # type: list
         
         print "Call-ahead blacklist (domain/relay/reason):"
         for row in rows:
@@ -944,7 +944,7 @@ class SMTPTestCommandLineInterface(object):
 
         test=SMTPTest(config)
         relays=test.get_relays(domain,domainconfig)
-        if relays==None:
+        if relays is None:
             print "No relay for domain %s found!"%domain
             sys.exit(1)
         print "Relays for domain %s are %s"%(domain,relays)
@@ -976,7 +976,8 @@ class SMTPTestCommandLineInterface(object):
             
             if cache.is_blacklisted(domain, relay):
                 print "Server was blacklisted - removing from blacklist"
-                cache.unblacklist(relay, domain)
+                cache.unblacklist(relay)
+                cache.unblacklist(domain)
             
             addrstate,code,msg=result.rcptoreplies[address]
             positive=True

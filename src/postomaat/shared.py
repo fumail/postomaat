@@ -60,17 +60,17 @@ def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
     if valuesfunction is not none, it is called with the final dict with all built-in and passed values
     and allows further modifications, like SQL escaping etc
     """
-    if values==None:
+    if values is None:
         values={}
         
     default_template_values(suspect, values)
     
-    if valuesfunction!=None:
+    if valuesfunction is not None:
         values=valuesfunction(values)
     else:
         #replace None with empty string
         for k,v in values.iteritems():
-            if v==None:
+            if v is None:
                 values[k]=''
     
     template = Template(templatecontent)
@@ -82,7 +82,7 @@ def default_template_values(suspect, values=None):
     """Return a dict with default template variables applicable for this suspect
     if values is not none, fill the values dict instead of returning a new one"""
 
-    if values == None:
+    if values is None:
         values = {}
         
     values = dict(suspect.values.items()+values.items())
@@ -140,46 +140,46 @@ class Suspect(object):
     @property
     def from_address(self):
         sender=self.get_value('sender')
-        if sender==None:
+        if sender is None:
             return None
         
         try:
             addr=strip_address(sender)
             return addr
-        except:
+        except Exception:
             return None
     
     @property
     def from_domain(self):
         from_address=self.from_address
-        if from_address==None:
+        if from_address is None:
             return None
         
         try:
             return extract_domain(from_address)
-        except:
+        except ValueError:
             return None
         
     @property
     def to_address(self):
         rec=self.get_value('recipient')
-        if rec==None:
+        if rec is None:
             return None
         
         try:
             addr=strip_address(rec)
             return addr
-        except:
+        except Exception:
             return None
     
     @property
     def to_domain(self):
         rec=self.to_address
-        if rec==None:
+        if rec is None:
             return None
         try:
             return extract_domain(rec)
-        except:
+        except ValueError:
             return None
     
 
@@ -189,7 +189,7 @@ class BasicPlugin(object):
     """Base class for all plugins"""
     
     def __init__(self,config,section=None):
-        if section==None:
+        if section is None:
             self.section=self.__class__.__name__
         else:
             self.section=section
@@ -275,13 +275,13 @@ def strip_address(address):
         return retaddr 
 
 def extract_domain(address):
-    if address==None or address=='':
+    if address is None or address=='':
         return None
     else:                                                        
         try:                                                   
             (user, domain) = address.rsplit('@',1)                
             return domain                                      
-        except Exception, e:                                   
+        except Exception as e:
             raise ValueError,"invalid email address: '%s'"%address
 
 class ScannerPlugin(BasicPlugin):
@@ -301,10 +301,10 @@ def get_config(postomaatconfigfile=None,dconfdir=None):
     newconfig=configparser.ConfigParser()
     logger=logging.getLogger('postomaat.shared')
     
-    if postomaatconfigfile==None:
+    if postomaatconfigfile is None:
         postomaatconfigfile='/etc/postomaat/postomaat.conf'
     
-    if dconfdir==None:
+    if dconfdir is None:
         dconfdir='/etc/postomaat/conf.d'
     
     newconfig.readfp(open(postomaatconfigfile))
@@ -358,13 +358,13 @@ class FileList(object):
         if lowercase:
             self.linefilters.append(lambda x: x.lower())
 
-        if additional_filters != None:
+        if additional_filters is not None:
             if type(additional_filters) == list:
                 self.linefilters.extend(additional_filters)
             else:
                 self.linefilters.append(additional_filters)
 
-        if filename != None:
+        if filename is not None:
             self._reload_if_necessary()
 
     def _reload_if_necessary(self):
@@ -390,10 +390,10 @@ class FileList(object):
         for line in lines:
             for func in self.linefilters:
                 line = func(line)
-                if line == None:
+                if line is None:
                     break
 
-            if line != None:
+            if line is not None:
                 newcontent.append(line)
 
         self.content = newcontent

@@ -26,7 +26,7 @@ def get_session(connectstring, **kwargs):
         engine = create_engine(connectstring, pool_recycle=20)
         _engines[connectstring] = engine
 
-    if _sessmaker == None:
+    if _sessmaker is None:
         _sessmaker = sessionmaker(autoflush=True, autocommit=True, **kwargs)
 
     session = scoped_session(_sessmaker)

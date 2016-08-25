@@ -30,7 +30,7 @@ class RecRule(object):
         for nv in numeric_values:
             try:
                 allvals[nv]=int(allvals[nv])
-            except:
+            except ValueError:
                 pass
 
         #lg.debug(allvals)
@@ -39,14 +39,14 @@ class RecRule(object):
             susval=allvals.get(part.field,'')
             try:
                 susval=susval.strip()
-            except:
+            except Exception:
                 pass
             
             checkval=part.value
             if part.field in numeric_values:
                 try:
                     checkval=int(checkval)
-                except:
+                except ValueError:
                     pass
             if part.operator=='=':
                 hit=susval==checkval
@@ -61,7 +61,7 @@ class RecRule(object):
                     susval=0
                 hit=susval<checkval
             elif part.operator=='~':
-                hit=re.match(checkval,str(susval))!=None
+                hit=re.match(checkval,str(susval)) is not None
             else:
                 lg.warn("Unknown rule operator '%s'"%part.operator)
                 continue
@@ -133,7 +133,7 @@ class RecipientRules(ScannerPlugin):
         return False
 
     def reload_if_necessary(self):
-        if self.ruledict==None or self.filechanged():
+        if self.ruledict is None or self.filechanged():
             filename=self.config.get(self.section,'configfile')
             lg.info("Reloading file: %s"%filename)
             self.ruledict=self.load_file(filename)
@@ -189,7 +189,7 @@ class RecipientRules(ScannerPlugin):
             if line.startswith('#') or line=='':
                 continue
             
-            if re.match(headerpattern, line)!=None:
+            if re.match(headerpattern, line) is not None:
                 currentrecipient=line[1:-1]
                 if currentrecipient not in retdict:
                     retdict[currentrecipient]=[]
@@ -198,9 +198,9 @@ class RecipientRules(ScannerPlugin):
             #lg.debug("Line: %s"%line)
             
             m=re.match(rulepattern,line)
-            if m!=None:
+            if m is not None:
                 #if we ever don't want global rules anymore
-                if currentrecipient==None:
+                if currentrecipient is None:
                     lg.warn("%s line %s: not in a recipient section, ignoring: %s"%(filename,lc,line))
                     continue
                 
@@ -218,7 +218,7 @@ class RecipientRules(ScannerPlugin):
                 problem=False
                 for rule in rulepart.split():
                     m=re.match(singlerulepattern, rule)
-                    if m==None:
+                    if m is None:
                         lg.warn("%s line %s: can not parse rule '%s'"%(filename,lc,rule))
                         problem=True
                         break
@@ -248,7 +248,7 @@ class RecipientRules(ScannerPlugin):
                         regex=value[1:endslashindex]
                         flags=value[endslashindex+1:]
                         #safety feature request axb
-                        if re.search(r'(^|[^\\])\|\|', regex)!=None:
+                        if re.search(r'(^|[^\\])\|\|', regex) is not None:
                             lg.warn("%s line %s: found dangerous two-pipe combination in regex %s -ignoring this rule"%(filename,lc,regex))
                             problem=True
                             break                        
@@ -265,7 +265,7 @@ class RecipientRules(ScannerPlugin):
                         
                         try:
                             value=re.compile(regex,reflags)
-                        except Exception,e:
+                        except Exception as e:
                             lg.warn("%s line %s: invalid regex '%s' : %s"%(filename,lc,regex,str(e)))
                             problem=True
                             break
