@@ -5,7 +5,7 @@ import sys
 if __name__ =='__main__':
     sys.path.append('../../')
 
-from postomaat.shared import *
+from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config
 from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
 import smtplib
 from string import Template
@@ -78,7 +78,19 @@ class AddressCheck(ScannerPlugin):
                 'default': "False",
                 'description': """Set this to always return 'DUNNO' but still perform the recipient check and fill the cache (learning mode without rejects)"""
 
-            },              
+            },
+                           
+            'keep_positive_history_time':{
+                'default': 30,
+                'description': """how long should expired positive cache data be kept in the table history [days]"""
+
+            },
+                           
+            'keep_negative_history_time':{
+                'default': 1,
+                'description': """how long should expired negative cache data be kept in the table history [days]"""
+
+            },
                              
         }
         
@@ -123,7 +135,7 @@ class AddressCheck(ScannerPlugin):
             return DUNNO
 
         if entry is not None:
-            (positive,message)=entry
+            positive, message = entry
             
             if positive:
                 self.logger.info('accepting cached address %s'%address)
@@ -174,7 +186,8 @@ class AddressCheck(ScannerPlugin):
         
         #perform call-ahead
         sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':from_address})
-        result=test.smtptest(relay,[address,testaddress],mailfrom=sender)
+        timeout = test.get_domain_config(domain, 'timeout', domainconfig)
+        result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
         
 
         if result.state!=SMTPTestResult.TEST_OK:
@@ -380,10 +393,6 @@ class SMTPTest(object):
 
         smtp=smtplib.SMTP(local_hostname=helo)
         smtp.timeout=timeout
-        #python 2.4 workaround....
-        #TODO: remove when we have migrated to newer python version
-        import socket
-        socket.setdefaulttimeout(timeout)
         #smtp.set_debuglevel(True)
         try:
             code,msg=smtp.connect(relay, 25)
@@ -592,7 +601,6 @@ class MySQLCache(CallAheadCacheInterface):
         statement="""INSERT INTO ca_addresscache (email,domain,expiry_ts,positive,message) VALUES (:email,:domain,now()+interval :interval second,:positive,:message)
         ON DUPLICATE KEY UPDATE check_ts=now(),expiry_ts=now()+interval :interval second,positive=:positive,message=:message
         """
-        #todo strip domain
         domain=extract_domain(address)
         values={'email':address,
                 'domain':domain,
