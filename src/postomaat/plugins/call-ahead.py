@@ -186,7 +186,10 @@ class AddressCheck(ScannerPlugin):
         
         #perform call-ahead
         sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':from_address})
-        timeout = test.get_domain_config(domain, 'timeout', domainconfig)
+        try:
+            timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
+        except (ValueError, TypeError):
+            timeout = 10
         result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
         
 
