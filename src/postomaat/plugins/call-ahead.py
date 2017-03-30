@@ -874,6 +874,7 @@ class RedisCache(CallAheadCacheInterface):
             'relay':relay,
             'checkstage':failstage,
             'reason':reason,
+            'check_ts':datetime.now(),
         }
         self._update(key, values, expires)
         
@@ -957,6 +958,7 @@ class RedisCache(CallAheadCacheInterface):
             'domain':domain,
             'positive':positiveEntry,
             'message':message,
+            'check_ts':datetime.now(),
         }
         self._update(name, values, expires)
         
