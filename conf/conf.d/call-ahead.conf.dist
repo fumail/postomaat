@@ -59,3 +59,37 @@ server=mx:${domain}
 #${bounce} : Use the null sender (bounce address). This should work as well, but can lead to problems if the target server does not like multiple recipients from the null-sender (eg. postfix with restriction reject_multi_recipient_bounce)
 #${originalfrom} : Use the original from address. Dangerous as this can lead to wrong negative cache entries if a sender address is blacklisted on the target server. 
 sender=${bounce}
+
+
+## Problem actions
+#all those values can be DUNNO, DEFER or REJECT
+
+#action if we don't find a server to ask
+no_valid_server_fail_action=DUNNO
+no_valid_server_fail_interval=3600
+no_valid_server_fail_message=
+
+#action if we can't resolve target server hostname
+resolve_fail_action=DUNNO
+resolve_fail_interval=3600
+resolve_fail_message=
+
+#action if we cannot connect to the target server
+connect_fail_action=DUNNO
+connect_fail_interval=300
+connect_fail_message=
+
+#action if the target server does not accept our HELO
+helo_fail_action=DUNNO
+helo_fail_interval=3600
+helo_fail_message=
+
+#action if the target server does not accept our from address
+mail_from_fail_action=DUNNO
+mail_from_fail_interval=3600
+mail_fail_message=
+
+#action if the target server show unexpected behaviour on presenting the recipient address
+rcpt_to_fail_action=DUNNO
+rcpt_to_fail_interval=3600
+rcpt_fail_message=

@@ -5,12 +5,13 @@ import sys
 if __name__ =='__main__':
     sys.path.append('../../')
 
-from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config
+from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config, string_to_actioncode
 from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
 import smtplib
 from string import Template
 import logging
 from datetime import datetime, timedelta
+import re
 
 HAVE_DNSPYTHON=False
 try:
@@ -33,6 +34,32 @@ try:
     HAVE_REDIS=True
 except ImportError:
     pass
+
+HAVE_DNS = HAVE_DNSPYTHON or HAVE_PYDNS
+
+RE_IPV4 = re.compile(
+    """(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)""")
+RE_IPV6 = re.compile(
+    """(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9]))""")
+
+
+
+def alookup(hostname):
+    try:
+        if HAVE_DNSPYTHON:
+            arecs = []
+            arequest = resolver.query(hostname, 'A')
+            for rec in arequest:
+                arecs.append(rec.to_text())
+            return arecs
+        
+        elif HAVE_PYDNS:
+            return DNS.dnslookup(hostname, 'A')
+        
+    except Exception:
+        return None
+    
+    return None
 
 
 
@@ -57,7 +84,7 @@ def mxlookup(domain):
             return [x[1] for x in mxrecs]
         
     except Exception:
-        pass
+        return None
     
     return None
 
@@ -140,6 +167,12 @@ class AddressCheck(ScannerPlugin):
         
         if not self.checkConfig():
             return False
+
+        if self.config.get(self.section, 'server').startswith('mx:') and not HAVE_DNS:
+            print "no DNS resolver library available - required for mx resolution"
+            return False
+        elif not HAVE_DNS:
+            print "no DNS resolver library available - some functionality will not be available"
         
         if self.config.get(self.section, 'cache_storage') == 'redis' and not HAVE_REDIS:
             print 'redis backend configured but redis python module not available'
@@ -157,8 +190,8 @@ class AddressCheck(ScannerPlugin):
         test = SMTPTest(self.config)
         try:
             timeout = float(test.get_domain_config('lint', 'timeout'))
-            print 'Using default config timeout: %ss' % timeout
-        except (ValueError, TypeError):
+            #print 'Using default config timeout: %ss' % timeout
+        except Exception:
             print 'Could not get timeout value from config, using internal default of 10s'
             
         try:
@@ -231,38 +264,52 @@ class AddressCheck(ScannerPlugin):
         
         #check blacklist
         relays=test.get_relays(domain,domainconfig)
+        testaddress=test.maketestaddress(domain)
         if relays is None or len(relays)==0:
             self.logger.error("No relay for domain %s found!"%domain)
-            return DUNNO,None
+            relay = None
+            result = SMTPTestResult()
+            result.state=SMTPTestResult.TEST_FAILED
+            result.errormessage="no relay for domain %s found" % domain
         
-        relay=relays[0]
-        self.logger.debug("Testing relay %s for domain %s"%(relay,domain))
-        if self.cache.is_blacklisted(domain, relay):
-            self.logger.info('%s: server %s for domain %s is blacklisted for call-aheads, skipping'%(address,relay,domain))
-            return DUNNO,None
+        else:
+            relay=relays[0]
+            self.logger.debug("Testing relay %s for domain %s"%(relay,domain))
+            if self.cache.is_blacklisted(domain, relay):
+                self.logger.info('%s: server %s for domain %s is blacklisted for call-aheads, skipping'%(address,relay,domain))
+                return DUNNO,None
         
-        #make sure we don't call-ahead ourself
-        testaddress=test.maketestaddress(domain)
-        if address==testaddress:
-            self.logger.error("Call-ahead loop detected!")
-            self.cache.blacklist(domain, relay, servercachetime, SMTPTestResult.STAGE_CONNECT, 'call-ahead loop detected')
-            return DUNNO,None
+            #make sure we don't call-ahead ourself
+            if address==testaddress:
+                self.logger.error("Call-ahead loop detected!")
+                self.cache.blacklist(domain, relay, servercachetime, SMTPTestResult.STAGE_CONNECT, 'call-ahead loop detected')
+                return DUNNO,None
         
-        
-        #perform call-ahead
-        sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':from_address})
-        try:
-            timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
-        except (ValueError, TypeError):
-            timeout = 10
-        result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
+            #perform call-ahead
+            sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':from_address})
+            try:
+                timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
+            except (ValueError, TypeError):
+                timeout = 10
+            result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
         
 
-        if result.state!=SMTPTestResult.TEST_OK:
-            self.logger.error('Problem testing recipient verification support on server %s : %s. putting on blacklist.'%(relay,result.errormessage))
-            self.cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
-            #TODO: perform the configured fail actions
-            return DUNNO,None
+        if result.state != SMTPTestResult.TEST_OK:
+            action = DUNNO
+            message = None
+            
+            for stage in [SMTPTestResult.STAGE_PRECONNECT, SMTPTestResult.STAGE_RESOLVE, SMTPTestResult.STAGE_CONNECT, SMTPTestResult.STAGE_HELO, SMTPTestResult.STAGE_MAIL_FROM, SMTPTestResult.STAGE_RCPT_TO]:
+                if result.stage == stage:
+                    stageaction, message, interval = self._get_stage_config(stage, test, domain, domainconfig)
+                    if stageaction is not None:
+                        action = stageaction
+                    if interval is not None:
+                        servercachetime = min(servercachetime, interval)
+                        
+            if relay is not None:
+                self.logger.error('Problem testing recipient verification support on server %s : %s. putting on blacklist.'%(relay,result.errormessage))
+                self.cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
+            return action, message
         
         addrstate,code,msg=result.rcptoreplies[testaddress]
         recverificationsupport=None
@@ -314,8 +361,23 @@ class AddressCheck(ScannerPlugin):
             self.cache.blacklist(domain, relay, servercachetime, result.stage, blreason)
         return DUNNO,None
     
+    
+    
+    def _get_stage_config(self, stage, test, domain, domainconfig):
+        try:
+            interval = int(test.get_domain_config(domain, '%s_fail_interval' % stage, domainconfig))
+        except (ValueError, TypeError):
+            interval = None
+            self.logger.debug('Invalid %s_fail_interval for domain %s' % (stage, domain))
+        stageaction = string_to_actioncode(test.get_domain_config(domain, '%s_fail_action' % stage, domainconfig))
+        message = test.get_domain_config(domain, '%s_fail_message' % stage, domainconfig) or None
+        
+        return stageaction, message, interval
+    
 
 class SMTPTestResult(object):
+    STAGE_PRECONNECT="preconnect"
+    STAGE_RESOLVE="resolve"
     STAGE_CONNECT="connect"
     STAGE_HELO="helo"
     STAGE_MAIL_FROM="mail_from"
@@ -332,7 +394,7 @@ class SMTPTestResult(object):
     
     def __init__(self):
         #at what stage did the test end
-        self.stage=SMTPTestResult.STAGE_CONNECT
+        self.stage=SMTPTestResult.STAGE_PRECONNECT
         #test ok or error
         self.state=SMTPTestResult.TEST_IN_PROGRESS    
         self.errormessage=None 
@@ -357,10 +419,12 @@ class SMTPTestResult(object):
         
         str_stage="unknown"    
         stagedesc={
-          SMTPTestResult.STAGE_CONNECT:'connect',
-          SMTPTestResult.STAGE_HELO:'helo',
-          SMTPTestResult.STAGE_MAIL_FROM:'mail_from',
-          SMTPTestResult.STAGE_RCPT_TO:'rcpt_to'      
+            SMTPTestResult.STAGE_PRECONNECT:"preconnect",
+            SMTPTestResult.STAGE_RESOLVE:"resolve",
+            SMTPTestResult.STAGE_CONNECT:'connect',
+            SMTPTestResult.STAGE_HELO:'helo',
+            SMTPTestResult.STAGE_MAIL_FROM:'mail_from',
+            SMTPTestResult.STAGE_RCPT_TO:'rcpt_to'
         }
         if self.stage in stagedesc:
             str_stage=stagedesc[self.stage]
@@ -371,10 +435,10 @@ class SMTPTestResult(object):
             return desc
         
         addrstatedesc={
-          SMTPTestResult.ADDRESS_DOES_NOT_EXIST:'no',
-          SMTPTestResult.ADDRESS_OK:'yes',
-          SMTPTestResult.ADDRESS_TEMPFAIL:'no(temp fail)',
-          SMTPTestResult.ADDRESS_UNKNOWNSTATE:'unknown'      
+            SMTPTestResult.ADDRESS_DOES_NOT_EXIST:'no',
+            SMTPTestResult.ADDRESS_OK:'yes',
+            SMTPTestResult.ADDRESS_TEMPFAIL:'no (temp fail)',
+            SMTPTestResult.ADDRESS_UNKNOWNSTATE:'unknown'
         }
         
         for k in self.rcptoreplies:
@@ -389,6 +453,11 @@ class SMTPTest(object):
     def __init__(self,config=None):
         self.config=config
         self.logger=logging.getLogger('postomaat.smtptest')
+        
+    
+    def is_ip(self, value):
+        return RE_IPV4.match(value) or RE_IPV6.match(value)
+    
     
     def maketestaddress(self,domain):
         """Return a static test address that probably doesn't exist. It is NOT randomly generated, so we can check if the incoming connection does not produce a call-ahead loop""" 
@@ -456,8 +525,17 @@ class SMTPTest(object):
         
         if mailfrom is None:
             mailfrom=""
+            
+        result.stage=SMTPTestResult.STAGE_RESOLVE
+        if HAVE_DNS and not self.is_ip(relay):
+            arecs = alookup(relay)
+            if arecs is not None and len(arecs)==0:
+                result.state=SMTPTestResult.TEST_FAILED
+                result.errormessage="relay %s could not be resolved" % relay
+                return result
         
 
+        result.stage=SMTPTestResult.STAGE_CONNECT
         smtp=smtplib.SMTP(local_hostname=helo)
         smtp.timeout=timeout
         #smtp.set_debuglevel(True)
