@@ -23,6 +23,12 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
+
+
+HOSTNAME=socket.gethostname()
+
+
+
 #answers
 REJECT="reject"
 DEFER="defer"
@@ -38,11 +44,27 @@ PREPEND="prepend"
 REDIRECT="redirect"
 WARN="warn"
 
+ALLCODES = {
+    "reject":REJECT,
+    "defer":DEFER,
+    "defer_if_reject":DEFER_IF_REJECT,
+    "defer_if_permit":DEFER_IF_PERMIT,
+    "ok":OK,
+    "dunno":DUNNO,
+    "discard":DISCARD,
+    "filter":FILTER,
+    "hold":HOLD,
+    "prepend":PREPEND,
+    "redirect":REDIRECT,
+    "warn":WARN,
+}
+
+
 #protocol stages
 CONNECT="CONNECT"
 EHLO="EHLO"
-HELO="HELO", 
-MAIL="MAIL" 
+HELO="HELO"
+MAIL="MAIL"
 RCPT="RCPT"
 DATA="DATA"
 END_OF_MESSAGE="END-OF-MESSAGE"
@@ -50,7 +72,58 @@ VRFY="VRFY"
 ETRN="ETRN"
 PERMIT="PERMIT"
 
-HOSTNAME=socket.gethostname()
+ALLSTAGES = {
+    "CONNECT":CONNECT,
+    "EHLO":EHLO,
+    "HELO":HELO,
+    "MAIL":MAIL,
+    "RCPT":RCPT,
+    "DATA":DATA,
+    "END-OF-MESSAGE":END_OF_MESSAGE,
+    "VRFY":VRFY,
+    "ETRN":ETRN,
+    "PERMIT":PERMIT,
+}
+
+
+
+def actioncode_to_string(actioncode):
+    """Return the human readable string for this code"""
+    for key, val in list(ALLCODES.items()):
+        if val == actioncode:
+            return key
+    if actioncode == ACCEPT: #alias for OK
+        return ACCEPT
+    if actioncode is None:
+        return "NULL ACTION CODE"
+    return 'INVALID ACTION CODE %s' % actioncode
+
+
+
+def string_to_actioncode(actionstring):
+    """return the code for this action"""
+    alower = actionstring.lower().strip()
+    return ALLCODES[alower]
+
+
+
+def stage_to_string(stagename):
+    """Return the human readable string for this code"""
+    for key, val in list(ALLSTAGES.items()):
+        if val == stagename:
+            return key
+    if stagename is None:
+        return "NULL STAGE"
+    return 'INVALID STAGE %s' % stagename
+
+
+
+def string_to_stage(stagestring):
+    """return the code for this action"""
+    alower = stagestring.lower().strip()
+    return ALLSTAGES[alower]
+
+
 
 def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
     """Replace templatecontent variables 
@@ -199,7 +272,7 @@ class BasicPlugin(object):
     def _logger(self):
         """returns the logger for this plugin"""
         myclass=self.__class__.__name__
-        loggername="postomaat.plugin.%s"%(myclass)
+        loggername="postomaat.plugin.%s" % myclass
         return logging.getLogger(loggername)
     
     def lint(self):
