@@ -927,9 +927,9 @@ class RedisCache(CallAheadCacheInterface):
             delkeys = []
             for item in entries:
                 if positive == 'positive' and item[1] == 'True':
-                    delkeys.append('addr-%s' * item['address'])
+                    delkeys.append('addr-%s' % item['address'])
                 elif positive == 'negative' and item[1] == 'False':
-                    delkeys.append('addr-%s' * item['address'])
+                    delkeys.append('addr-%s' % item['address'])
             
         if delkeys:
             delcount = self.redis.delete(*delkeys)
