@@ -10,6 +10,7 @@ from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
 import smtplib
 from string import Template
 import logging
+from datetime import datetime, timedelta
 
 HAVE_DNSPYTHON=False
 try:
@@ -23,6 +24,13 @@ try:
     import DNS
     HAVE_PYDNS=True
     DNS.DiscoverNameServers()
+except ImportError:
+    pass
+
+HAVE_REDIS=False
+try:
+    import redis
+    HAVE_REDIS=True
 except ImportError:
     pass
 
@@ -51,8 +59,6 @@ def mxlookup(domain):
     except Exception:
         pass
     
-    #TODO: other dns libraries?
-    
     return None
 
 
@@ -60,12 +66,27 @@ class AddressCheck(ScannerPlugin):
                                          
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
-        self.logger=self._logger()
-        self.cache=MySQLCache(config)
+        self.logger = self._logger()
+        self.cache = None
         self.requiredvars={
             'dbconnection':{
                 'default':"mysql://root@localhost/callahead?charset=utf8",
                 'description':'SQLAlchemy Connection string',
+            },
+            
+            'redis':{
+                'default':'127.0.0.1:6379:1',
+                'description':'the redis database connection: host:port:dbid',
+            },
+            
+            'redis_timeout':{
+                'default':'2',
+                'description':'timeout in seconds',
+            },
+            
+            'cache_storage':{
+                'default':'sql',
+                'description':'the storage backend, either sql or redis',
             },
              
             'always_assume_rec_verification_support':{
@@ -82,17 +103,35 @@ class AddressCheck(ScannerPlugin):
                            
             'keep_positive_history_time':{
                 'default': 30,
-                'description': """how long should expired positive cache data be kept in the table history [days]"""
+                'description': """how long should expired positive cache data be kept in the table history [days] (sql only)"""
 
             },
                            
             'keep_negative_history_time':{
                 'default': 1,
-                'description': """how long should expired negative cache data be kept in the table history [days]"""
+                'description': """how long should expired negative cache data be kept in the table history [days] (sql only)"""
 
             },
                              
         }
+    
+    
+    
+    def _init_cache(self, config):
+        if self.cache is None:
+            storage = config.get(self.section, 'cache_storage')
+            if storage == 'sql':
+                self.cache = MySQLCache(config)
+            elif storage == 'redis':
+                host, port, db = config.get(self.section, 'redis').split(':')
+                red = redis.StrictRedis(
+                    host=host,
+                    port=port,
+                    db=int(db),
+                    socket_timeout=config.getint(self.section, 'redis_timeout'))
+                self.cache = RedisCache(config, red)
+
+        
         
     def lint(self):
         if not SQLALCHEMY_AVAILABLE:
@@ -101,18 +140,43 @@ class AddressCheck(ScannerPlugin):
         
         if not self.checkConfig():
             return False
+        
+        if self.config.get(self.section, 'cache_storage') == 'redis' and not HAVE_REDIS:
+            print 'redis backend configured but redis python module not available'
+            return False
+        
+        self._init_cache(self.config)
+        
         try:
-            (poscount,negcount)=self.cache.get_total_counts()
+            poscount, negcount = self.cache.get_total_counts()
             print "Addresscache: %s positive entries, %s negative entries"%(poscount,negcount)
         except Exception as e:
             print "DB Connection failed: %s"%str(e)
             return False
+        
+        test = SMTPTest(self.config)
+        try:
+            timeout = float(test.get_domain_config('lint', 'timeout'))
+            print 'Using default config timeout: %ss' % timeout
+        except (ValueError, TypeError):
+            print 'Could not get timeout value from config, using internal default of 10s'
+            
+        try:
+            dbconnection = self.config.get(self.section, 'dbconnection')
+            conn=get_session(dbconnection)
+            conn.execute("SELECT 1")
+        except Exception as e:
+            print "Failed to connect to SQL database: %s" % str(e)
             
         return True
-                           
+    
+    
+    
     def __str__(self):
         return "Address Check"
-  
+    
+    
+    
     def examine(self,suspect):
         from_address=suspect.get_value('sender')
         if from_address is None:
@@ -128,10 +192,11 @@ class AddressCheck(ScannerPlugin):
         from_address=strip_address(from_address)
         
         #check cache
+        self._init_cache(self.config)
         try:
             entry=self.cache.get_address(address)
         except Exception as e:
-            self.logger.error('Could not connect to database')
+            self.logger.error('Could not connect to cache database: %s' % str(e))
             return DUNNO
 
         if entry is not None:
@@ -336,7 +401,6 @@ class SMTPTest(object):
         
         theval=defval
         if domainconfig is None: #nothing from sql
-            
             #check config file overrides
             configbackend=ConfigFileBackend(self.config)
             
@@ -467,11 +531,12 @@ class SMTPTest(object):
             pass
         return result   
 
+
+
 class CallAheadCacheInterface(object):
     def __init__(self,config):
         self.config=config
         self.logger=logging.getLogger('postomaat.call-ahead.%s'%self.__class__.__name__)
-        
     
     def blacklist(self,domain,relay,expires,failstage=SMTPTestResult.STAGE_RCPT_TO,reason='unknown'):
         """Put a domain/relay combination on the recipient verification blacklist for a certain amount of time"""
@@ -482,14 +547,48 @@ class CallAheadCacheInterface(object):
         self.logger.error('is_blacklisted: not implemented')
         return False
     
+    def get_blacklist(self):
+        """return all blacklisted servers"""
+        self.logger.error('get_blacklist: not implemented')
+        #expected format per item: domain, relay, reason, expiry timestamp
+        return []
+    
+    def unblacklist(self,relayordomain):
+        """remove a server from the blacklist/history"""
+        self.logger.error('unblacklist: not implemented')
+        return 0
+    
+    def wipe_domain(self,domain,positive=None):
+        self.logger.error('wipe_domain: not implemented')
+        return 0
+    
+    def get_all_addresses(self,domain):
+        self.logger.error('get_all_addresses: not implemented')
+        return []
     
     def put_address(self,address,expires,positiveEntry=True,message=None):
+        """add address to cache"""
         self.logger.error('put_address: not implemented')
     
     def get_address(self,address):
         """Returns a tuple (positive(boolean),message) if a cache entry exists, None otherwise"""
         self.logger.error('get_address: not implemented')
         return None
+    
+    def wipe_address(self,address):
+        """remove address from cache"""
+        self.logger.error('wipe_address: not implemented')
+        return 0
+    
+    def get_total_counts(self):
+        self.logger.error('get_total_counts: not implemented')
+        return 0, 0
+    
+    def cleanup(self):
+        self.logger.error('cleanup: not implemented')
+        return 0, 0, 0
+    
+    
     
 class MySQLCache(CallAheadCacheInterface):
     def __init__(self,config):
@@ -571,7 +670,7 @@ class MySQLCache(CallAheadCacheInterface):
         res=conn.execute("""DELETE FROM ca_blacklist where expiry_ts<now()""")
         blcount=res.rowcount
         conn.remove()
-        return (poscount,negcount,blcount)
+        return poscount,negcount,blcount
         
     def wipe_domain(self,domain,positive=None):
         """wipe all cache info for a domain. 
@@ -647,9 +746,182 @@ class MySQLCache(CallAheadCacheInterface):
         result=conn.execute(statement)
         negcount=result.fetchone()[0]
         conn.remove()
-        return (poscount,negcount)
+        return poscount, negcount
      
     
+     
+class RedisCache(CallAheadCacheInterface):
+    
+    def __init__(self, config, redisconn=None):
+        CallAheadCacheInterface.__init__(self, config)
+        self.redis = redisconn or redis.StrictRedis()
+        
+        
+        
+    def _update(self, name, values, ttl):
+        """atomic update of hash value and ttl in redis"""
+        pipe = self.redis.pipeline()
+        pipe.hmset(name, values)
+        pipe.expire(name, ttl)
+        pipe.execute()
+        
+        
+    
+    def _multiget(self, names, keys):
+        """atomically gets multiple hashes from redis"""
+        pipe = self.redis.pipeline()
+        for name in names:
+            pipe.hmget(name, keys)
+        items = pipe.execute()
+        return items
+    
+    
+    
+    def __pos2bool(self, entry, idx):
+        """converts string boolean value in list back to boolean"""
+        if entry is None or len(entry)<idx:
+            pass
+        if entry[idx] == 'True':
+            entry[idx] = True
+        elif entry[idx] == 'False':
+            entry[idx] = False
+        
+        
+    
+    def blacklist(self,domain,relay,expires,failstage=SMTPTestResult.STAGE_RCPT_TO,reason='unknown'):
+        """Put a domain/relay combination on the recipient verification blacklist for a certain amount of time"""
+        key = 'relay-%s-%s' % (relay, domain)
+        values = {
+            'domain':domain,
+            'relay':relay,
+            'checkstage':failstage,
+            'reason':reason,
+        }
+        self._update(key, values, expires)
+        
+        
+        
+    def unblacklist(self,relayordomain):
+        """remove a server from the blacklist/history"""
+        names = self.redis.keys('relay-*%s*' % relayordomain)
+        if names:
+            delcount = self.redis.delete(*names)
+        else:
+            delcount = 0
+        return delcount
+        
+        
+    
+    def is_blacklisted(self,domain,relay):
+        """Returns True if the server/relay combination is currently blacklisted and should not be used for recipient verification"""
+        name = 'relay-%s-%s' % (relay, domain)
+        blacklisted = self.redis.exists(name)
+        return blacklisted
+    
+    
+    
+    def get_blacklist(self):
+        """return all blacklisted servers"""
+        names = self.redis.keys('relay-*')
+        items = []
+        for name in names:
+            item = self.redis.hmget(name, ['domain', 'relay', 'reason'])
+            ttl = self.redis.ttl(name)
+            ts = datetime.now() + timedelta(seconds=ttl)
+            item.append(ts.strftime('%Y-%m-%d %H:%M:%S'))
+            items.append(item)
+        items.sort(key=lambda x:x[0])
+        return items
+    
+    
+    
+    def wipe_domain(self,domain,positive=None):
+        """remove all addresses in given domain from cache"""
+        if positive is not None:
+            positive = positive.lower()
+        names = self.redis.keys('addr-*@%s' % domain)
+        
+        if positive is None or positive == 'all':
+            delkeys = names
+        else:
+            entries = self._multiget(names, ['address', 'positive'])
+            delkeys = []
+            for item in entries:
+                if positive == 'positive' and item[1] == 'True':
+                    delkeys.append('addr-%s' * item['address'])
+                elif positive == 'negative' and item[1] == 'False':
+                    delkeys.append('addr-%s' * item['address'])
+            
+        if delkeys:
+            delcount = self.redis.delete(*delkeys)
+        else:
+            delcount = 0
+        return delcount
+    
+    
+    
+    def get_all_addresses(self,domain):
+        """get all addresses in given domain from cache"""
+        names = self.redis.keys('addr-*@%s' % domain)
+        entries = self._multiget(names, ['address', 'positive'])
+        for item in entries:
+            self.__pos2bool(item, 1)
+        return entries
+    
+    
+    
+    def put_address(self,address,expires,positiveEntry=True,message=None):
+        """put address in cache"""
+        name = 'addr-%s' % address
+        domain=extract_domain(address)
+        values={
+            'address':address,
+            'domain':domain,
+            'positive':positiveEntry,
+            'message':message,
+        }
+        self._update(name, values, expires)
+        
+        
+    
+    def get_address(self,address):
+        """Returns a tuple (positive(boolean),message) if a cache entry exists, None otherwise"""
+        name = 'addr-%s' % address
+        entry = self.redis.hmget(name, ['positive', 'message'])
+        if entry[0] is not None:
+            self.__pos2bool(entry, 0)
+        else:
+            entry = None
+        return entry
+        
+        
+        
+    def wipe_address(self,address):
+        """remove given address from cache"""
+        name = self.redis.keys('addr-%s' % address)
+        delcount = self.redis.delete(name)
+        return delcount
+    
+    
+    
+    def get_total_counts(self):
+        """return how many positive and negative entries are in cache"""
+        names = self.redis.keys('addr-*')
+        entries = self._multiget(names, ['positive'])
+        poscount = negcount = 0
+        for item in entries:
+            if item[0] == 'True':
+                poscount += 1
+            else:
+                negcount += 1
+        return poscount, negcount
+    
+    
+    
+    def cleanup(self):
+        # nothing to do on redis
+        return 0, 0, 0
+        
  
     
 class ConfigBackendInterface(object):
@@ -667,6 +939,8 @@ class ConfigBackendInterface(object):
         self.logger.error("get_domain_config_value: not implemented")
         return {}
 
+
+
 class MySQLConfigBackend(ConfigBackendInterface):
     def __init__(self,config):
         self.logger=logging.getLogger('postomaat.call-ahead.%s'%self.__class__.__name__)
@@ -680,7 +954,7 @@ class MySQLConfigBackend(ConfigBackendInterface):
             sc=res.scalar()
             conn.remove()
         except Exception as e:
-            self.logger.error('Could not connect to database')
+            self.logger.error('Could not connect to config SQL database')
         return sc
     
     def get_domain_config_all(self,domain):
@@ -692,9 +966,11 @@ class MySQLConfigBackend(ConfigBackendInterface):
                 retval[row[0]]=row[1]
             conn.remove()
         except Exception as e:
-            self.logger.error('Could not connect to database')
+            self.logger.error('Could not connect to config SQL database')
         return retval
-    
+
+
+
 class ConfigFileBackend(ConfigBackendInterface):
     """Read domain overrides directly from postomaat config, using ca_<domain> sections"""
     def __init__(self,config):
@@ -706,8 +982,11 @@ class ConfigFileBackend(ConfigBackendInterface):
         return None
         
 
+
 class SMTPTestCommandLineInterface(object):
     def __init__(self):
+        self.cache = None
+        self.section = 'AddressCheck'
         
         self.commandlist={
             'wipe-address':self.wipe_address,
@@ -723,12 +1002,33 @@ class SMTPTestCommandLineInterface(object):
             'unblacklist':self.unblacklist,
         }
     
+    
+
+    def _init_cache(self, config):
+        if self.cache is None:
+            storage = config.get(self.section, 'cache_storage')
+            if storage == 'sql':
+                self.cache = MySQLCache(config)
+            elif storage == 'redis':
+                host, port, db = config.get(self.section, 'redis').split(':')
+                red = redis.StrictRedis(
+                    host=host,
+                    port=port,
+                    db=int(db),
+                    socket_timeout = config.getint(self.section, 'redis_timeout'))
+                self.cache = RedisCache(config, red)
+                
+                
+    
     def cleanup(self,*args):
         config=get_config()
-        (poscount,negcount,blcount)=MySQLCache(config).cleanup()
+        self._init_cache(config)
+        poscount, negcount, blcount = self.cache.cleanup()
         if 'verbose' in args:
             print "Removed %s positive,%s negative records from history data"%(poscount,negcount)
             print "Removed %s expired relays from call-ahead blacklist"%blcount
+    
+    
     
     def devshell(self):
         """Drop into a python shell for debugging"""
@@ -739,7 +1039,7 @@ class SMTPTestCommandLineInterface(object):
         from postomaat.shared import get_config
         config=get_config('../../../conf/postomaat.conf.dist', '../../../conf/conf.d')
         config.read('../../../conf/conf.d/call-ahead.conf.dist')
-        sqlcache=MySQLCache(config)
+        self._init_cache(config)
         plugin=AddressCheck(config)
         print "cli : Command line interface class"
         print "sqlcache : SQL cache backend"
@@ -747,8 +1047,9 @@ class SMTPTestCommandLineInterface(object):
         terp=code.InteractiveConsole(locals())
         terp.interact("")
     
+    
+    
     def help(self,*args):
-        
         myself=sys.argv[0]
         print "usage:"
         print "%s <command> [args]"%myself
@@ -799,7 +1100,21 @@ class SMTPTestCommandLineInterface(object):
         server=args[0]
         addrs=args[1:]
         test=SMTPTest()
-        result=test.smtptest(server,addrs)
+        
+        domain=extract_domain(addrs[0])
+        try:
+            config=get_config()
+            test.config = config
+            domainconfig=MySQLConfigBackend(config).get_domain_config_all(domain)
+            try:
+                timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
+            except (ValueError, TypeError):
+                timeout = 10
+        except IOError as e:
+            print str(e)
+            timeout = 10
+        
+        result=test.smtptest(server,addrs,timeout=timeout)
         print result
         
     def test_config(self,*args):
@@ -815,10 +1130,10 @@ class SMTPTestCommandLineInterface(object):
         domainconfig=MySQLConfigBackend(config).get_domain_config_all(domain)
         
         print "Checking address cache..."
-        cache=MySQLCache(config)
-        entry=cache.get_address(address)
+        self._init_cache(config)
+        entry=self.cache.get_address(address)
         if entry is not None:
-            (positive,message)=entry
+            positive, message = entry
             tp="negative"
             if positive:
                 tp="positive"
@@ -834,7 +1149,7 @@ class SMTPTestCommandLineInterface(object):
         print "Relays for domain %s are %s"%(domain,relays)
         for relay in relays:
             print "Testing relay %s"%relay
-            if cache.is_blacklisted(domain, relay):
+            if self.cache.is_blacklisted(domain, relay):
                 print "%s is currently blacklisted for call-aheads"%relay
             else:
                 print "%s not blacklisted for call-aheads"%relay
@@ -843,7 +1158,11 @@ class SMTPTestCommandLineInterface(object):
             
             sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':''})
             testaddress=test.maketestaddress(domain)
-            result=test.smtptest(relay,[address,testaddress],mailfrom=sender)
+            try:
+                timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
+            except (ValueError, TypeError):
+                timeout = 10
+            result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
             if result.state!=SMTPTestResult.TEST_OK:
                 print "There was a problem testing this server:"
                 print result
@@ -860,15 +1179,19 @@ class SMTPTestCommandLineInterface(object):
             
             print result
     
+    
+    
     def wipe_address(self,*args):
         if len(args)!=1:
             print "usage: wipe-address <address>"
             sys.exit(1)
         config=get_config()
-        cache=MySQLCache(config)
-        rowcount=cache.wipe_address(args[0])
+        self._init_cache(config)
+        rowcount = self.cache.wipe_address(args[0])
         print "Wiped %s records"%rowcount
-
+    
+    
+    
     def wipe_domain(self,*args):
         if len(args)<1:
             print "usage: wipe-domain <domain> [positive|negative|all (default)]"
@@ -890,18 +1213,20 @@ class SMTPTestCommandLineInterface(object):
                 strpos=''
             
         config=get_config()
-        cache=MySQLCache(config)
-        rowcount=cache.wipe_domain(domain,pos)
+        self._init_cache(config)
+        rowcount = self.cache.wipe_domain(domain,pos)
         print "Wiped %s %s records"%(rowcount,strpos)       
+    
+    
     
     def show_domain(self,*args):
         if len(args)!=1:
             print "usage: show-domain <domain>"
             sys.exit(1)
         config=get_config()
-        cache=MySQLCache(config)
+        self._init_cache(config)
         domain=args[0]
-        rows=cache.get_all_addresses(domain) # type: list
+        rows = self.cache.get_all_addresses(domain) # type: list
         
         print "Cache for domain %s (-: negative entry, +: positive entry)"%domain
         for row in rows:
@@ -912,19 +1237,21 @@ class SMTPTestCommandLineInterface(object):
                 print "- ",email
         total=len(rows)
         print "Total %s cache entries for domain %s"%(total,domain)
-        
+    
+    
+    
     def show_blacklist(self,*args):
         if len(args)>0:
             print "usage: show-blackist"
             sys.exit(1)
         config=get_config()
-        cache=MySQLCache(config)
-        rows=cache.get_blacklist() # type: list
+        self._init_cache(config)
+        rows = self.cache.get_blacklist() # type: list
         
-        print "Call-ahead blacklist (domain/relay/reason):"
+        print "Call-ahead blacklist (domain/relay/reason/expiry):"
         for row in rows:
             domain,relay,reason,exp=row
-            print "%s\t%s\t%s"%(domain,relay,reason)
+            print "%s\t%s\t%s\t%s"%(domain,relay,reason,exp)
             
         total=len(rows)
         print "Total %s blacklisted relays"%total
@@ -935,8 +1262,8 @@ class SMTPTestCommandLineInterface(object):
             sys.exit(1)
         relay=args[0]
         config=get_config()
-        cache=MySQLCache(config)
-        count=cache.unblacklist(relay)
+        self._init_cache(config)
+        count = self.cache.unblacklist(relay)
         print "%s entries removed from call-ahead blacklist"%count
         
     def update(self,*args):
@@ -950,8 +1277,7 @@ class SMTPTestCommandLineInterface(object):
         
         config=get_config()
         domainconfig=MySQLConfigBackend(config).get_domain_config_all(domain)
-        
-        cache=MySQLCache(config)
+        self._init_cache(config)
 
         test=SMTPTest(config)
         relays=test.get_relays(domain,domainconfig)
@@ -963,14 +1289,18 @@ class SMTPTestCommandLineInterface(object):
         relay=relays[0]
         sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':''})
         testaddress=test.maketestaddress(domain)
-        result=test.smtptest(relay,[address,testaddress],mailfrom=sender)
+        try:
+            timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
+        except (ValueError, TypeError):
+            timeout = 10
+        result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
         
         servercachetime=test.get_domain_config(domain, 'test_server_interval', domainconfig)
         if result.state!=SMTPTestResult.TEST_OK:
             print "There was a problem testing this server:"
             print result
             print "putting server on blacklist"
-            cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
+            self.cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
             return DUNNO,None
     
     
@@ -985,10 +1315,10 @@ class SMTPTestCommandLineInterface(object):
         
         if recverificationsupport:
             
-            if cache.is_blacklisted(domain, relay):
+            if self.cache.is_blacklisted(domain, relay):
                 print "Server was blacklisted - removing from blacklist"
-                cache.unblacklist(relay)
-                cache.unblacklist(domain)
+                self.cache.unblacklist(relay)
+                self.cache.unblacklist(domain)
             
             addrstate,code,msg=result.rcptoreplies[address]
             positive=True
@@ -997,7 +1327,7 @@ class SMTPTestCommandLineInterface(object):
                 positive=False
                 cachetime=test.get_domain_config(domain, 'negative_cache_time', domainconfig)
             
-            cache.put_address(address,cachetime,positive,msg)
+            self.cache.put_address(address,cachetime,positive,msg)
             neg=""
             if not positive:
                 neg="negative"
@@ -1007,7 +1337,7 @@ class SMTPTestCommandLineInterface(object):
             if config.getboolean('AddressCheck','always_assume_rec_verification_support'):
                 print "blacklistings disabled in config- not blacklisting"
             else:
-                cache.blacklist(domain, relay, servercachetime, result.stage, 'accepts any recipient')
+                self.cache.blacklist(domain, relay, servercachetime, result.stage, 'accepts any recipient')
                 print "Server blacklisted"
             
         
