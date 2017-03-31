@@ -136,7 +136,7 @@ def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
     if values is None:
         values={}
         
-    default_template_values(suspect, values)
+    values = default_template_values(suspect, values)
     
     if valuesfunction is not None:
         values=valuesfunction(values)
