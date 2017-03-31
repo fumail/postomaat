@@ -37,6 +37,8 @@ except ImportError:
 
 HAVE_DNS = HAVE_DNSPYTHON or HAVE_PYDNS
 
+DATEFORMAT = u'%Y-%m-%d %H:%M:%S'
+
 RE_IPV4 = re.compile(
     """(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)""")
 RE_IPV6 = re.compile(
@@ -677,14 +679,14 @@ class MySQLCache(CallAheadCacheInterface):
         conn=get_session(self.config.get('AddressCheck','dbconnection'))
 
         statement="""INSERT INTO ca_blacklist (domain,relay,expiry_ts,check_stage,reason)
-                    VALUES (:domain,:relay,now()+interval :interval second,:checkstage,:reason)
-                    ON DUPLICATE KEY UPDATE expiry_ts=now()+interval :interval second,check_stage=:checkstage,reason=:reason
+                    VALUES (:domain,:relay,now()+interval :interval second,:check_stage,:reason)
+                    ON DUPLICATE KEY UPDATE expiry_ts=now()+interval :interval second,check_stage=:check_stage,reason=:reason
                     """
         values={
                 'domain':domain,
                 'relay':relay,
                 'interval':seconds,
-                'checkstage':failstage,
+                'check_stage':failstage,
                 'reason':reason,
                 }
         res=conn.execute(statement,values)
@@ -872,9 +874,9 @@ class RedisCache(CallAheadCacheInterface):
         values = {
             'domain':domain,
             'relay':relay,
-            'checkstage':failstage,
+            'check_stage':failstage,
             'reason':reason,
-            'check_ts':datetime.now(),
+            'check_ts':datetime.now().strftime(DATEFORMAT),
         }
         self._update(key, values, expires)
         
@@ -907,7 +909,7 @@ class RedisCache(CallAheadCacheInterface):
             item = self.redis.hmget(name, ['domain', 'relay', 'reason'])
             ttl = self.redis.ttl(name)
             ts = datetime.now() + timedelta(seconds=ttl)
-            item.append(ts.strftime('%Y-%m-%d %H:%M:%S'))
+            item.append(ts.strftime(DATEFORMAT))
             items.append(item)
         items.sort(key=lambda x:x[0])
         return items
@@ -958,7 +960,7 @@ class RedisCache(CallAheadCacheInterface):
             'domain':domain,
             'positive':positiveEntry,
             'message':message,
-            'check_ts':datetime.now(),
+            'check_ts':datetime.now().strftime(DATEFORMAT),
         }
         self._update(name, values, expires)
         
