@@ -31,7 +31,6 @@ keep_negative_history_time = 1
 #these are the default options. you can override every option for a domain by creating a new config section
 #[ca_example.com]
 
-
 #enable recipient verification
 enabled = 1
 
@@ -60,6 +59,8 @@ server=mx:${domain}
 #${originalfrom} : Use the original from address. Dangerous as this can lead to wrong negative cache entries if a sender address is blacklisted on the target server. 
 sender=${bounce}
 
+# use opportunistic TLS if supported by server. set to False to disable tls
+use_tls=1
 
 ## Problem actions
 #all those values can be DUNNO, DEFER or REJECT

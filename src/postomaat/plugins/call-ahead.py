@@ -286,16 +286,17 @@ class AddressCheck(ScannerPlugin):
                 self.logger.error("Call-ahead loop detected!")
                 self.cache.blacklist(domain, relay, servercachetime, SMTPTestResult.STAGE_CONNECT, 'call-ahead loop detected')
                 return DUNNO,None
-        
+            
             #perform call-ahead
             sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':from_address})
             try:
                 timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
             except (ValueError, TypeError):
                 timeout = 10
-            result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
+            use_tls=int(test.get_domain_config(domain, 'use_tls', domainconfig))
+            result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout, use_tls=use_tls)
         
-
+        
         if result.state != SMTPTestResult.TEST_OK:
             action = DUNNO
             message = None
@@ -307,7 +308,7 @@ class AddressCheck(ScannerPlugin):
                         action = stageaction
                     if interval is not None:
                         servercachetime = min(servercachetime, interval)
-                        
+            
             if relay is not None:
                 self.logger.error('Problem testing recipient verification support on server %s : %s. putting on blacklist.'%(relay,result.errormessage))
                 self.cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
@@ -518,7 +519,7 @@ class SMTPTest(object):
             return None 
         
     
-    def smtptest(self,relay,addrlist,helo=None,mailfrom=None,timeout=10):
+    def smtptest(self,relay,addrlist,helo=None,mailfrom=None,timeout=10, use_tls=1):
         """perform a smtp check until the rcpt to stage
         returns a SMTPTestResult
         """
@@ -557,13 +558,23 @@ class SMTPTest(object):
         #HELO
         result.stage=SMTPTestResult.STAGE_HELO
         try:
-            code,msg=smtp.helo()
+            code,msg=smtp.ehlo()
             result.heloreply=(code,msg)
             if code<200 or code>299:
                 result.state=SMTPTestResult.TEST_FAILED
-                result.errormessage="HELO was not accepted: %s"%msg
+                result.errormessage="EHLO was not accepted: %s"%msg
                 return result
-        except Exception,e:
+            if 'STARTTLS' in msg.splitlines() and use_tls:
+                code,msg = smtp.starttls()
+                if code>199 and code<300:
+                    code,msg=smtp.ehlo()
+                    if code<200 or code>299:
+                        result.state=SMTPTestResult.TEST_FAILED
+                        result.errormessage="EHLO after STARTTLS was not accepted: %s"%msg
+                        return result
+                else:
+                    self.logger.info('relay %s did not accept starttls: %s %s' % (relay, code, msg))
+        except Exception as e:
             result.errormessage=str(e)
             result.state=SMTPTestResult.TEST_FAILED
             return result
@@ -1192,11 +1203,13 @@ class SMTPTestCommandLineInterface(object):
                 timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
             except (ValueError, TypeError):
                 timeout = 10
+            use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
         except IOError as e:
             print str(e)
             timeout = 10
+            use_tls=1
         
-        result=test.smtptest(server,addrs,timeout=timeout)
+        result=test.smtptest(server,addrs,timeout=timeout, use_tls=use_tls)
         print result
         
     def test_config(self,*args):
@@ -1244,7 +1257,8 @@ class SMTPTestCommandLineInterface(object):
                 timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
             except (ValueError, TypeError):
                 timeout = 10
-            result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
+            use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
+            result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout, use_tls=use_tls)
             if result.state!=SMTPTestResult.TEST_OK:
                 print "There was a problem testing this server:"
                 print result
@@ -1375,7 +1389,8 @@ class SMTPTestCommandLineInterface(object):
             timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
         except (ValueError, TypeError):
             timeout = 10
-        result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout)
+        use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
+        result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout, use_tls=use_tls)
         
         servercachetime=test.get_domain_config(domain, 'test_server_interval', domainconfig)
         if result.state!=SMTPTestResult.TEST_OK:
