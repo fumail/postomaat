@@ -367,15 +367,15 @@ class MainController(object):
 
         plugdir=self.config.get('main', 'plugindir').strip()
         if plugdir!="" and not os.path.isdir(plugdir):
-            self._logger().warning('Plugin directory %s not found'%plugdir)
+            self.logger.warning('Plugin directory %s not found'%plugdir)
         
         if plugdir!="":   
-            self._logger().debug('Searching for additional plugins in %s'%plugdir)
+            self.logger.debug('Searching for additional plugins in %s'%plugdir)
             if plugdir not in sys.path:
                 sys.path.insert(0,plugdir)
     
-        #self._logger().info('Module search path %s'%sys.path)
-        self._logger().debug('Loading scanner plugins')
+        self.logger.debug('Module search path %s'%sys.path)
+        self.logger.debug('Loading scanner plugins')
         
         newplugins,loadok=self._load_all(self.config.get('main', 'plugins'))
         if not loadok:
@@ -407,9 +407,9 @@ class MainController(object):
                 plugininstance=self._load_component(structured_name,configsection=configoverride)
                 pluglist.append(plugininstance)
             except Exception as e:
-                self._logger().error('Could not load plugin %s : %s'%(structured_name, str(e)))
+                self.logger.error('Could not load plugin %s : %s'%(structured_name, str(e)))
                 exc=traceback.format_exc()
-                self._logger().error(exc)
+                self.logger.error(exc)
                 allOK=False
         
         return pluglist,allOK
