@@ -82,8 +82,9 @@ class DaemonStuff(object):
         # write pidfile
         atexit.register(self.delpid)
         pid = str(os.getpid())
-        with os.open(self.pidfile, os.O_WRONLY | os.O_CREAT, 0o644) as pidfd:
-            os.write(pidfd, "%s\n" % pid)
+        pidfd = os.open(self.pidfile, os.O_WRONLY | os.O_CREAT, 0o644)
+        os.write(pidfd, "%s\n" % pid)
+        os.close(pidfd)
         return 0
 
     def drop_privs(self, username='nobody', groupname='nobody', keep_supplemental_groups=True):
