@@ -311,8 +311,8 @@ class FileReloader(object):
         statinfo=os.stat(self.filename)
         ctime=statinfo.st_ctime
         self.lastreload=ctime
-        fp=open(self.filename,'r')
-        content=fp.read()
+        with open(self.filename,'r') as fp:
+            content=fp.read()
         self.content=content
 
 

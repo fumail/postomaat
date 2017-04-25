@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template
-from postomaat.shared import FileList
+from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, FileList, string_to_actioncode
 try:
     import spf
     have_spf = True
@@ -142,7 +141,7 @@ class SPFPlugin(ScannerPlugin):
 
         configopt='on_%s'%result
         if self.config.has_option(self.section,configopt):
-            action=self.config.get(self.section,configopt)
+            action=string_to_actioncode(self.config.get(self.section,configopt))
 
         return action, message
          
@@ -163,6 +162,8 @@ class SPFPlugin(ScannerPlugin):
             lint_ok = False
         
         return lint_ok
-
+    
+    
+    
     def __str__(self):
         return "SPF"

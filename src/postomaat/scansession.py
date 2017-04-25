@@ -12,12 +12,12 @@ class SessionHandler(object):
     """thread handling one message"""
 
     def __init__(self, incomingsocket, config, plugins):
-        self. incomingsocket = incomingsocket
-        self. logger = logging.getLogger("%s.SessionHandler" % __package__)
-        self. action = DUNNO
-        self. arg = ""
-        self. config = config
-        self. plugins = plugins
+        self.incomingsocket = incomingsocket
+        self.logger = logging.getLogger("%s.SessionHandler" % __package__)
+        self.action = DUNNO
+        self.arg = ""
+        self.config = config
+        self.plugins = plugins
         self.workerthread = None
 
     def set_threadinfo(self, status):
@@ -96,7 +96,7 @@ class SessionHandler(object):
                         'Plugin makes a decision other than DUNNO - not running any other plugins')
                     break
 
-            except Exception as e:
+            except Exception:
                 exc = traceback. format_exc()
                 self.logger.error('Plugin %s failed: %s' % (str(plugin), exc))
 
@@ -131,8 +131,8 @@ class PolicydSession(object):
             try:
                 key, val = line.split('=', 1)
                 self.values[key] = val
-            except Exception as e:
+            except Exception:
                 self.logger.error('Invalid Protocol line: %s' % line)
-                return False
+                break
 
         return False

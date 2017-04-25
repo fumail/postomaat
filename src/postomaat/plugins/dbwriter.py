@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from postomaat.shared import *
 from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
 

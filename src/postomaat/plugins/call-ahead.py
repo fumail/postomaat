@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 import sys
 
 #in case the tool is not installed system wide (development...)
@@ -13,27 +14,27 @@ import logging
 from datetime import datetime, timedelta
 import re
 
-HAVE_DNSPYTHON=False
 try:
     from dns import resolver
     HAVE_DNSPYTHON=True
 except ImportError:
-    pass
+    resolver = None
+    HAVE_DNSPYTHON=False
 
-HAVE_PYDNS=False
 try:
     import DNS
     HAVE_PYDNS=True
     DNS.DiscoverNameServers()
 except ImportError:
-    pass
+    DNS = None
+    HAVE_PYDNS=False
 
-HAVE_REDIS=False
 try:
     import redis
     HAVE_REDIS=True
 except ImportError:
-    pass
+    redis = None
+    HAVE_REDIS=False
 
 HAVE_DNS = HAVE_DNSPYTHON or HAVE_PYDNS
 
@@ -506,8 +507,8 @@ class SMTPTest(object):
             return [val,]
         elif tp=='txt':
             try:
-                content=open(val).read()
-                lines=content.split('\n')
+                with open(val) as fp:
+                    lines=fp.readlines()
                 for line in lines:
                     fdomain,ftarget=line.split()
                     if domain.lower()==fdomain.lower():

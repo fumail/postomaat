@@ -21,13 +21,15 @@ LIB_GEOIP_MAXMIND = 2
 
 try:
     import pygeoip
-    have_geoip = LIB_GEOIP_PYGEOIP
+    HAVE_GEOIP = LIB_GEOIP_PYGEOIP
 except ImportError:
+    pygeoip = None
     try:
         import GeoIP
-        have_geoip = LIB_GEOIP_MAXMIND
+        HAVE_GEOIP = LIB_GEOIP_MAXMIND
     except ImportError:
-        have_geoip = LIB_GEOIP_NONE
+        GeoIP = None
+        HAVE_GEOIP = LIB_GEOIP_NONE
 
 
 class FuFileCache(object):
@@ -132,9 +134,9 @@ class GeoIPPlugin(ScannerPlugin):
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
-        if have_geoip == LIB_GEOIP_PYGEOIP:
+        if HAVE_GEOIP == LIB_GEOIP_PYGEOIP:
             self.geoip = PyGeoIPCache(None)
-        elif have_geoip == LIB_GEOIP_MAXMIND:
+        elif HAVE_GEOIP == LIB_GEOIP_MAXMIND:
             self.geoip = GeoIPCache(None)
         else:
             self.geoip = None
@@ -177,7 +179,7 @@ class GeoIPPlugin(ScannerPlugin):
         
         
     def examine(self,suspect):
-        if have_geoip == LIB_GEOIP_NONE:
+        if HAVE_GEOIP == LIB_GEOIP_NONE:
             return DUNNO
         
         database = self.config.get(self.section, 'database')
@@ -221,12 +223,12 @@ class GeoIPPlugin(ScannerPlugin):
     def lint(self):
         lint_ok = True
         
-        if have_geoip == LIB_GEOIP_NONE:
+        if HAVE_GEOIP == LIB_GEOIP_NONE:
             print 'No geoip module installed - this plugin will do nothing'
             lint_ok = False
-        elif have_geoip == LIB_GEOIP_PYGEOIP:
+        elif HAVE_GEOIP == LIB_GEOIP_PYGEOIP:
             print 'using pygeoip'
-        elif have_geoip == LIB_GEOIP_MAXMIND:
+        elif HAVE_GEOIP == LIB_GEOIP_MAXMIND:
             print 'using maxmind geoip'
         
             

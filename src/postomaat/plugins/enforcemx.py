@@ -25,9 +25,10 @@ from threading import Lock
 
 try:
     from netaddr import IPAddress, IPNetwork
-    have_netaddr = True
+    HAVE_NETADDR = True
 except ImportError:
-    have_netaddr = False
+    IPAddress = IPNetwork = None
+    HAVE_NETADDR = False
 
 from postomaat.shared import ScannerPlugin, DUNNO, DEFER_IF_PERMIT, REJECT, strip_address, extract_domain
 
@@ -99,8 +100,9 @@ class RulesCache(FuFileCache):
         
     def _reallyloadData(self, filename):
         regex_ip = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(/\d{1,2})?|[a-f0-9:]{3,39})$'
-        handle=open(filename)
-        for line in handle.readlines():
+        with open(filename) as fp:
+            lines = fp.readlines()
+        for line in lines:
             line.strip()
             if line and not line.startswith('#'):
                 data = line.split(None, 1)
@@ -185,7 +187,7 @@ class EnforceMX(ScannerPlugin):
         
         
     def examine(self,suspect):
-        if not have_netaddr:
+        if not HAVE_NETADDR:
             return DUNNO,None
         
         client_address=suspect.get_value('client_address')
@@ -260,7 +262,7 @@ class EnforceMX(ScannerPlugin):
     def lint(self):
         lint_ok = True
         
-        if not have_netaddr:
+        if not HAVE_NETADDR:
             print 'netaddr python module not available - please install'
             lint_ok =  False
         

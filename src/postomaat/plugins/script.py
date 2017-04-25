@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 from postomaat.shared import ScannerPlugin,DUNNO,ACCEPT,DEFER,REJECT
 import os
 import traceback
@@ -85,7 +87,8 @@ example script:
         for script in scripts:
             counter+=1
             try:
-                source=open(script,'r').read()
+                with open(script,'r') as fp:
+                    source = fp.read()
                 compile(source,script,'exec')
             except Exception:
                 trb=traceback.format_exc()

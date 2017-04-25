@@ -45,14 +45,14 @@ class DaemonStuff(object):
         except OSError as e:
             raise Exception("%s [%d]" % (e.strerror, e.errno))
 
-        if (pid == 0):
+        if pid == 0:
             os.setsid()
             try:
                 pid = os.fork()    # Fork a second child.
             except OSError as e:
                 raise Exception("%s [%d]" % (e.strerror, e.errno))
 
-            if (pid == 0):    # The second child.
+            if pid == 0:    # The second child.
                 os.chdir('/')
                 os.umask(0)
             else:
@@ -64,7 +64,7 @@ class DaemonStuff(object):
 
         import resource        # Resource usage information.
         maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-        if (maxfd == resource.RLIM_INFINITY):
+        if maxfd == resource.RLIM_INFINITY:
             maxfd = 1024
 
         # Iterate through and close all file descriptors.
@@ -82,10 +82,9 @@ class DaemonStuff(object):
         # write pidfile
         atexit.register(self.delpid)
         pid = str(os.getpid())
-        pidfd = os.open(self.pidfile, os.O_WRONLY | os.O_CREAT, 0o644)
-        os.write(pidfd, "%s\n" % pid)
-        os.close(pidfd)
-        return(0)
+        with os.open(self.pidfile, os.O_WRONLY | os.O_CREAT, 0o644) as pidfd:
+            os.write(pidfd, "%s\n" % pid)
+        return 0
 
     def drop_privs(self, username='nobody', groupname='nobody', keep_supplemental_groups=True):
         """Drop privileges of the current process to specified unprivileged user and group. If keep_supplemental_groups is True,

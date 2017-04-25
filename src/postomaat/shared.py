@@ -136,7 +136,7 @@ def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
     if values is None:
         values={}
         
-    default_template_values(suspect, values)
+    values = default_template_values(suspect, values)
     
     if valuesfunction is not None:
         values=valuesfunction(values)
@@ -379,8 +379,9 @@ def get_config(postomaatconfigfile=None,dconfdir=None):
     
     if dconfdir is None:
         dconfdir='/etc/postomaat/conf.d'
-    
-    newconfig.readfp(open(postomaatconfigfile))
+
+    with open(postomaatconfigfile) as fp:
+        newconfig.readfp(fp)
     
     #load conf.d
     if os.path.isdir(dconfdir):
@@ -455,9 +456,8 @@ class FileList(object):
         statinfo = os.stat(self.filename)
         ctime = statinfo.st_ctime
         self._lastreload = ctime
-        fp = open(self.filename, 'r')
-        lines = fp.readlines()
-        fp.close()
+        with open(self.filename, 'r') as fp:
+            lines = fp.readlines()
         newcontent = []
 
         for line in lines:

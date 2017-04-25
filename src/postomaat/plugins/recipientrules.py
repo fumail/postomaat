@@ -183,8 +183,10 @@ class RecipientRules(ScannerPlugin):
         currentrecipient='global'
         retdict['global']=[]
         
-        for line in open(filename,'r').readlines():
-            lc=lc+1
+        with open(filename,'r') as fp:
+            lines = fp.readlines()
+        for line in lines:
+            lc+=1
             line=line.strip()
             if line.startswith('#') or line=='':
                 continue
