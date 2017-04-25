@@ -43,5 +43,5 @@ creativetld=postomaat.plugins.rdns.CreativeTLD
 recipientrules=postomaat.plugins.recipientrules.RecipientRules
 script=postomaat.plugins.script.ScriptFilter
 spfcheck=postomaat.plugins.spfcheck.SPFPlugin
-
+enforcetls=postomaat.plugins.enforcetls.EnforceTLS
 
