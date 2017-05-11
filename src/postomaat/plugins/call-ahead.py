@@ -171,7 +171,7 @@ class AddressCheck(ScannerPlugin):
         if not self.checkConfig():
             return False
 
-        if self.config.get(self.section, 'server').startswith('mx:') and not HAVE_DNS:
+        if self.config.get('ca_default', 'server').startswith('mx:') and not HAVE_DNS:
             print "no DNS resolver library available - required for mx resolution"
             return False
         elif not HAVE_DNS:
