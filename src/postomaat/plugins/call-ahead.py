@@ -692,7 +692,7 @@ class MySQLCache(CallAheadCacheInterface):
 
         statement="""INSERT INTO ca_blacklist (domain,relay,expiry_ts,check_stage,reason)
                     VALUES (:domain,:relay,now()+interval :interval second,:check_stage,:reason)
-                    ON DUPLICATE KEY UPDATE expiry_ts=now()+interval :interval second,check_stage=:check_stage,reason=:reason
+                    ON DUPLICATE KEY UPDATE expiry_ts=GREATEST(expiry_ts,now()+interval :interval second),check_stage=:check_stage,reason=:reason
                     """
         values={
                 'domain':domain,
@@ -793,7 +793,7 @@ class MySQLCache(CallAheadCacheInterface):
         if not conn:
             return
         statement="""INSERT INTO ca_addresscache (email,domain,expiry_ts,positive,message) VALUES (:email,:domain,now()+interval :interval second,:positive,:message)
-        ON DUPLICATE KEY UPDATE check_ts=now(),expiry_ts=now()+interval :interval second,positive=:positive,message=:message
+        ON DUPLICATE KEY UPDATE check_ts=now(),expiry_ts=GREATEST(expiry_ts,now()+interval :interval second),positive=:positive,message=:message
         """
         domain=extract_domain(address)
         values={'email':address,
@@ -882,7 +882,7 @@ class RedisCache(CallAheadCacheInterface):
     
     def blacklist(self,domain,relay,expires,failstage=SMTPTestResult.STAGE_RCPT_TO,reason='unknown'):
         """Put a domain/relay combination on the recipient verification blacklist for a certain amount of time"""
-        key = 'relay-%s-%s' % (relay, domain)
+        name = 'relay-%s-%s' % (relay, domain)
         values = {
             'domain':domain,
             'relay':relay,
@@ -890,7 +890,8 @@ class RedisCache(CallAheadCacheInterface):
             'reason':reason,
             'check_ts':datetime.now().strftime(DATEFORMAT),
         }
-        self._update(key, values, expires)
+        expires = max(expires, self.redis.ttl(name))
+        self._update(name, values, expires)
         
         
         
@@ -974,6 +975,7 @@ class RedisCache(CallAheadCacheInterface):
             'message':message,
             'check_ts':datetime.now().strftime(DATEFORMAT),
         }
+        expires = max(expires, self.redis.ttl(name))
         self._update(name, values, expires)
         
         

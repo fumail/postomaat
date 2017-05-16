@@ -1,5 +1,3 @@
-
-
 [AddressCheck]
 #dbconnection: sqlalchemy connection string
 dbconnection=mysql://root@localhost/callahead?charset=utf8
