@@ -1085,6 +1085,7 @@ class SMTPTestCommandLineInterface(object):
         self.section = 'AddressCheck'
         
         self.commandlist={
+            'put-address':self.put_address,
             'wipe-address':self.wipe_address,
             'wipe-domain':self.wipe_domain,
             'cleanup':self.cleanup,
@@ -1152,15 +1153,16 @@ class SMTPTestCommandLineInterface(object):
         print ""
         print "Available commands:"
         commands=[
-                  ("test-dry","<server> <emailaddress> [<emailaddress>] [<emailaddress>]","test recipients on target server using the null-sender, does not use any config or caching data"),
-                  ("test-config","<emailaddress>","test configuration using targetaddress <emailaddress>. shows relay lookup and target server information"),
-                  ("update","<emailaddress>","test & update server state&address cache for <emailaddress>"),
-                  ("wipe-address","<emailaddress>","remove <emailaddress> from the cache/history"),
-                  ("wipe-domain","<domain> [positive|negative|all (default)]","remove positive/negative/all entries for domain <domain> from the cache/history"),
-                  ("show-domain","<domain>","list all cache entries for domain <domain>"),
-                  ("show-blacklist","","display all servers currently blacklisted for call-aheads"),
-                  ("unblacklist","<relay or domain>","remove relay from the call-ahead blacklist"),
-                  ("cleanup","[verbose]","clean history data from database. this can be run from cron. add 'verbose' to see how many records where cleared")      
+            ("test-dry","<server> <emailaddress> [<emailaddress>] [<emailaddress>]","test recipients on target server using the null-sender, does not use any config or caching data"),
+            ("test-config","<emailaddress>","test configuration using targetaddress <emailaddress>. shows relay lookup and target server information"),
+            ("update","<emailaddress>","test & update server state&address cache for <emailaddress>"),
+            ("put-address","<emailaddress> <positive|negative> <ttl> <message>","add <emailaddress> to the cache"),
+            ("wipe-address","<emailaddress>","remove <emailaddress> from the cache/history"),
+            ("wipe-domain","<domain> [positive|negative|all (default)]","remove positive/negative/all entries for domain <domain> from the cache/history"),
+            ("show-domain","<domain>","list all cache entries for domain <domain>"),
+            ("show-blacklist","","display all servers currently blacklisted for call-aheads"),
+            ("unblacklist","<relay or domain>","remove relay from the call-ahead blacklist"),
+            ("cleanup","[verbose]","clean history data from database. this can be run from cron. add 'verbose' to see how many records where cleared"),
         ]
         for cmd,arg,desc in commands:
             self._print_help(cmd, arg, desc)
@@ -1174,7 +1176,6 @@ class SMTPTestCommandLineInterface(object):
         
         
     def performcommand(self):
-        
         args=sys.argv
         if len(args)<2:
             print "no command given."
@@ -1279,6 +1280,33 @@ class SMTPTestCommandLineInterface(object):
             print result
     
     
+    def put_address(self,*args):
+        if len(args)<4:
+            print "usage: put-address <emailaddress> <positive|negative> <ttl> <message>"
+            sys.exit(1)
+            
+        address=args[0]
+        
+        strpos=args[1].lower()
+        assert strpos in ['positive','negative'],"Additional argument must be 'positive' or 'negative'"
+        if strpos=='positive':
+            pos=True
+        else:
+            pos=False
+        
+        try:
+            ttl = int(args[2])
+        except (ValueError, TypeError):
+            print 'ttl must be an integer'
+            sys.exit(1)
+            
+        message = ' '.join(args[3:])
+                
+        config=get_config()
+        self._init_cache(config)
+        self.cache.put_address(address, ttl, pos, message)
+        
+    
     
     def wipe_address(self,*args):
         if len(args)!=1:
@@ -1288,7 +1316,6 @@ class SMTPTestCommandLineInterface(object):
         self._init_cache(config)
         rowcount = self.cache.wipe_address(args[0])
         print "Wiped %s records"%rowcount
-    
     
     
     def wipe_domain(self,*args):
@@ -1338,7 +1365,6 @@ class SMTPTestCommandLineInterface(object):
         print "Total %s cache entries for domain %s"%(total,domain)
     
     
-    
     def show_blacklist(self,*args):
         if len(args)>0:
             print "usage: show-blackist"
@@ -1354,7 +1380,8 @@ class SMTPTestCommandLineInterface(object):
             
         total=len(rows)
         print "Total %s blacklisted relays"%total
-        
+    
+    
     def unblacklist(self,*args):
         if len(args)<1:
             print "usage: unblacklist <relay or domain>"
@@ -1364,7 +1391,8 @@ class SMTPTestCommandLineInterface(object):
         self._init_cache(config)
         count = self.cache.unblacklist(relay)
         print "%s entries removed from call-ahead blacklist"%count
-        
+    
+    
     def update(self,*args):
         logging.basicConfig(level=logging.INFO)
         if len(args)!=1:
