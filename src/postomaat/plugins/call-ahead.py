@@ -561,20 +561,26 @@ class SMTPTest(object):
         try:
             code,msg=smtp.ehlo()
             result.heloreply=(code,msg)
-            if code<200 or code>299:
-                result.state=SMTPTestResult.TEST_FAILED
-                result.errormessage="EHLO was not accepted: %s"%msg
-                return result
-            if 'STARTTLS' in msg.splitlines() and use_tls:
-                code,msg = smtp.starttls()
-                if code>199 and code<300:
-                    code,msg=smtp.ehlo()
-                    if code<200 or code>299:
-                        result.state=SMTPTestResult.TEST_FAILED
-                        result.errormessage="EHLO after STARTTLS was not accepted: %s"%msg
-                        return result
+            if code>199 and code<300:
+                if smtp.has_extn('STARTTLS') and use_tls:
+                    code,msg = smtp.starttls()
+                    if code>199 and code<300:
+                        code,msg=smtp.ehlo()
+                        if code<200 or code>299:
+                            result.state=SMTPTestResult.TEST_FAILED
+                            result.errormessage="EHLO after STARTTLS was not accepted: %s"%msg
+                            return result
+                    else:
+                        self.logger.info('relay %s did not accept starttls: %s %s' % (relay, code, msg))
                 else:
-                    self.logger.info('relay %s did not accept starttls: %s %s' % (relay, code, msg))
+                    self.logger.info('relay %s does not support starttls: %s %s' % (relay, code, msg))
+            else:
+                self.logger.info('relay %s does not support esmtp, falling back' % (relay))
+                code,msg=smtp.helo()
+                if code < 200 or code > 299:
+                    result.state = SMTPTestResult.TEST_FAILED
+                    result.errormessage = "HELO was not accepted: %s" % msg
+                    return result
         except Exception as e:
             result.errormessage=str(e)
             result.state=SMTPTestResult.TEST_FAILED
