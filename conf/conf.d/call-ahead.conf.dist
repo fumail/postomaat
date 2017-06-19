@@ -86,9 +86,9 @@ helo_fail_message=
 #action if the target server does not accept our from address
 mail_from_fail_action=DUNNO
 mail_from_fail_interval=3600
-mail_fail_message=
+mail_from_fail_message=
 
 #action if the target server show unexpected behaviour on presenting the recipient address
 rcpt_to_fail_action=DUNNO
 rcpt_to_fail_interval=3600
-rcpt_fail_message=
+rcpt_to_fail_message=
