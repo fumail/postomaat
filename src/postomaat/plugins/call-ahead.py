@@ -349,8 +349,8 @@ class AddressCheck(ScannerPlugin):
             self.cache.put_address(address,cachetime,positive,msg)
             neg=""
             if not positive:
-                neg="negative"
-            self.logger.info("%s cached %s for %s seconds (%s)"%(neg,address,cachetime,msg))
+                neg="negative "
+            self.logger.info("%scached %s for %s seconds (%s)"%(neg,address,cachetime,msg))
             
             if positive:
                 return DUNNO,None
