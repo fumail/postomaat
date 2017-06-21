@@ -347,12 +347,14 @@ def strip_address(address):
         retaddr=retaddr.strip()                                    
         return retaddr 
 
-def extract_domain(address):
+def extract_domain(address, lowercase=True):
     if address is None or address=='':
         return None
     else:                                                        
         try:                                                   
-            (user, domain) = address.rsplit('@',1)                
+            user, domain = address.rsplit('@',1)
+            if lowercase:
+                domain = domain.lower()
             return domain                                      
         except Exception as e:
             raise ValueError,"invalid email address: '%s'"%address
@@ -414,7 +416,7 @@ class FileList(object):
         self._lastreload = 0
         self.linefilters = []
         self.content = []
-        self.logger = logging.getLogger('filelist')
+        self.logger = logging.getLogger('postomaat.filelist')
 
         # we always strip newline
         self.linefilters.append(lambda x: x.rstrip('\r\n'))
