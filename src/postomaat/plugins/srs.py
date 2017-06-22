@@ -10,6 +10,10 @@ except ImportError:
 
 
 class SRSBounceVerify(ScannerPlugin):
+    """
+    This plugin checks the validity of SRS bounces.
+    Intended to be used in conjunction with after queue SRS mechanisms such as Fuglu's SRS Plugin.
+    """
 
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
@@ -18,17 +22,17 @@ class SRSBounceVerify(ScannerPlugin):
         self.requiredvars = {
             'forward_domain': {
                 'default': 'example.com',
-                'description': 'the new envelope sender domain',
+                'description': 'the SRS envelope sender domain',
             },
 
             'secret': {
-                'default': 'asldifakerasldkfj',
-                'description': 'cryptographic secret',
+                'default': '',
+                'description': 'cryptographic secret. set the same random value on all your machines',
             },
 
             'maxage': {
                 'default': '8',
-                'description': '',
+                'description': 'maximum lifetime of bounces',
             },
 
             'hashlength': {
@@ -65,6 +69,7 @@ class SRSBounceVerify(ScannerPlugin):
         
         forward_domain = self.config.get(self.section, 'forward_domain')
         if suspect.to_domain != forward_domain:
+            self.logger.debug('SRS: ignoring mail to %s - only accepting %s' % (suspect.to_address, forward_domain))
             return DUNNO
         
         action = DUNNO
@@ -80,6 +85,8 @@ class SRSBounceVerify(ScannerPlugin):
                 self.logger.error('SRS: Failed to decrypt %s reason: %s' % (orig_rcpt, str(e)))
                 action = REJECT
                 message = apply_template(self.config.get(self.section, 'messagetemplate'), suspect)
+        else:
+            self.logger.debug('SRS: ignoring unsigned address %s' % (suspect.to_address))
                 
         return action, message
         
@@ -88,8 +95,12 @@ class SRSBounceVerify(ScannerPlugin):
     def lint(self):
         allok = self.checkConfig()
         if not HAVE_SRS:
-            allok=False
+            allok = False
             print 'SRS library not found'
+            
+        if self.config.get(self.section, 'secret') == '':
+            allok = False
+            print 'no secret set in config'
         
         if allok:
             srs = self._init_srs()
@@ -97,3 +108,11 @@ class SRSBounceVerify(ScannerPlugin):
             srs.forward('foobar@example.com', forward_domain)
             
         return allok
+    
+    
+    
+    def __str__(self):
+        return "SRSBounceVerify"
+    
+    
+    
