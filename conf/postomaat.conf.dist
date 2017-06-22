@@ -44,5 +44,5 @@ recipientrules=postomaat.plugins.recipientrules.RecipientRules
 script=postomaat.plugins.script.ScriptFilter
 spfcheck=postomaat.plugins.spfcheck.SPFPlugin
 enforcetls=postomaat.plugins.enforcetls.EnforceTLS
-srsbounce=postomaat.plugins.srsbounce.SRSBounceVerify
+srsbounce=postomaat.plugins.srs.SRSBounceVerify
 
