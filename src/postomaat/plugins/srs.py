@@ -48,6 +48,11 @@ class SRSBounceVerify(ScannerPlugin):
             'messagetemplate':{
                 'default':'${from_address} is not a valid SRS bounce address'
             },
+            
+            'accept_unsigned': {
+                'default': 'True',
+                'description': 'Accept unsigend (non SRS) recpients. Set to False to reject',
+            }
 
         }
     
@@ -87,6 +92,9 @@ class SRSBounceVerify(ScannerPlugin):
                 message = apply_template(self.config.get(self.section, 'messagetemplate'), suspect)
         else:
             self.logger.debug('SRS: ignoring unsigned address %s' % (suspect.to_address))
+            if not self.config.getboolean(self.section, 'accept_unsigned'):
+                action = REJECT
+                message = apply_template(self.config.get(self.section, 'messagetemplate'), suspect)
                 
         return action, message
         
