@@ -2,7 +2,7 @@
 
 __version__ = "0.0.1"
 
-from postomaat.shared import ScannerPlugin, OK, DUNNO, REJECT, DISCARD, DEFER_IF_PERMIT, strip_address, extract_domain
+from postomaat.shared import ScannerPlugin, OK, DUNNO, REJECT, DISCARD, DEFER_IF_PERMIT, strip_address, extract_domain, SettingsCache
 from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
 import time
 import threading, thread
@@ -35,60 +35,6 @@ if SQLALCHEMY_AVAILABLE:
         username = Column(Unicode(100),nullable=False)
         preference = Column(Unicode(30),nullable=False)
         value = Column(Unicode(100),nullable=False)
-
-
-
-class SettingsCache(object):
-    def __init__(self, cachetime=300, cleanupinterval=3600):
-        self.cache={}
-        self.cachetime=cachetime
-        self.cleanupinterval=cleanupinterval
-        self.lock=threading.Lock()
-        self.logger=logging.getLogger("blackwhitelist.settingscache")
-        
-        thread.start_new_thread(self.clear_cache_thread, ())
-        
-    def put(self,key,obj):
-        gotlock=self.lock.acquire(True)
-        if gotlock:
-            self.cache[key]=(obj,time.time())
-            self.lock.release()
-        
-    def get(self,key):
-        gotlock=self.lock.acquire(True)
-        if not gotlock:
-            return None
-        
-        ret=None
-        
-        if key in self.cache:
-            obj,instime=self.cache[key]
-            now=time.time()
-            if now-instime<self.cachetime:
-                ret=obj
-            else:
-                del self.cache[key]
-                
-        self.lock.release()
-        return ret
-    
-    def clear_cache_thread(self):
-        while True:
-            time.sleep(self.cleanupinterval)
-            now=time.time()
-            gotlock=self.lock.acquire(True)
-            if not gotlock:
-                continue
-            
-            cleancount=0
-            
-            for key in self.cache.keys()[:]:
-                instime=self.cache[key][1]
-                if now-instime>self.cachetime:
-                    del self.cache[key]
-                    cleancount+=1
-            self.lock.release()
-            self.logger.debug("Cleaned %s expired entries."%cleancount)
     
 
 
