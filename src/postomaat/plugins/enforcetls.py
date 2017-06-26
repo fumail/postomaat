@@ -83,7 +83,7 @@ class EnforceTLS(ScannerPlugin):
         enforce = False
 
         domainlist = self.config.get(self.section,'domainlist')
-        if domainlist == '':
+        if domainlist.strip() == '':
             enforce = True
 
         elif domainlist.startswith('txt:'):
@@ -132,7 +132,7 @@ class EnforceTLS(ScannerPlugin):
             
         if lint_ok:
             domainlist = self.config.get(self.section,'domainlist')
-            if domainlist == '':
+            if domainlist.strip() == '':
                 print 'Enforcing TLS for all domains'
             elif domainlist.startswith('txt:'):
                 domainfile = domainlist[4:]
