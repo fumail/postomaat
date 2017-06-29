@@ -16,12 +16,10 @@ domains are frequently forged and abused as spam sender.
 This plugin allows you to build your own fake SPF database.  
 """
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
-import logging
 import os
 import re
-from threading import Lock
 
 try:
     from netaddr import IPAddress, IPNetwork
@@ -30,72 +28,15 @@ except ImportError:
     IPAddress = IPNetwork = None
     HAVE_NETADDR = False
 
-from postomaat.shared import ScannerPlugin, DUNNO, DEFER_IF_PERMIT, REJECT, strip_address, extract_domain
-
-
-
-class FuFileCache(object):
-    __shared_state = {}
-            
-    def _initlocal(self, **kw):
-        pass
-    
-    def _reallyloadData(self, filename):
-        raise NotImplementedError()
-
-    def __init__(self, filename, **kw):
-        self.__dict__ = self.__shared_state
-        if not hasattr(self, 'uris'):
-            self.uris=[]
-
-        if not hasattr(self, 'lock'):
-            self.lock=Lock()
-        if not hasattr(self,'logger'):
-            self.logger=logging.getLogger(str(self))
-        if not hasattr(self,'lastreload'):
-            self.lastreload=0
-        self.filename = filename
-        
-        self._initlocal(**kw)
-        
-        self.reloadifnecessary(self.filename)
-        
-    
-    def reloadifnecessary(self, filename):
-        """reload database if file changed"""
-        if not self.filechanged(filename):
-            return
-        if not self.lock.acquire():
-            return
-        try:
-            self._loadData(filename)
-        finally:
-            self.lock.release()
+from postomaat.shared import ScannerPlugin, DUNNO, DEFER_IF_PERMIT, REJECT, strip_address, extract_domain, FileList
         
         
-    def filechanged(self, filename):
-        statinfo=os.stat(filename)
-        ctime=statinfo.st_ctime
-        if ctime>self.lastreload:
-            return True
-        return False
-    
-    
-    def _loadData(self, filename):
-        """effectively loads the Data, do not call directly, only through reloadifnecessary"""
-        #set last timestamp
-        statinfo=os.stat(filename)
-        ctime=statinfo.st_ctime
-        self.lastreload=ctime
-        self._reallyloadData(filename)
-        
-                
-        
-        
-class RulesCache(FuFileCache):        
-    def _initlocal(self, **kw):
+class RulesCache(FileList):
+    def __init__(self, filename=None, strip=True, skip_empty=True, skip_comments=True, lowercase=False,
+                 additional_filters=None, minimum_time_between_reloads=5):
         self.addresses = {}
         self.names = {}
+        FileList.__init__(self, filename, strip, skip_empty, skip_comments, lowercase, additional_filters, minimum_time_between_reloads)
              
         
     def _reallyloadData(self, filename):
@@ -152,7 +93,7 @@ class RulesCache(FuFileCache):
         return perm
     
     def permitted(self, domain, ip, hostname):
-        self.reloadifnecessary(self.filename)
+        self._reload_if_necessary()
         
         #domain is not listed, we accept mail from everywhere
         if not domain in self.addresses and not domain in self.names:
