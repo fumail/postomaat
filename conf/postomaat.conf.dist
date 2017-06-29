@@ -45,4 +45,4 @@ script=postomaat.plugins.script.ScriptFilter
 spfcheck=postomaat.plugins.spfcheck.SPFPlugin
 enforcetls=postomaat.plugins.enforcetls.EnforceTLS
 srsbounce=postomaat.plugins.srs.SRSBounceVerify
-
+ebl=postomaat.plugins.ebl-lookup.EBLLookup
