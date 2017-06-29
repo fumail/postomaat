@@ -418,6 +418,7 @@ class FileList(object):
         self.linefilters = []
         self.content = []
         self.logger = logging.getLogger('postomaat.filelist')
+        self.lock = threading.Lock()
 
         # we always strip newline
         self.linefilters.append(lambda x: x.rstrip('\r\n'))
@@ -450,8 +451,14 @@ class FileList(object):
         # check if reloadinterval has passed
         if now - self._lastreload < self.minium_time_between_reloads:
             return
-        if self.file_changed():
+        if not self.file_changed():
+            return
+        if not self.lock.acquire():
+            return
+        try:
             self._reload()
+        finally:
+            self.lock.release()
 
     def _reload(self):
         """Reload the file and build the list"""
