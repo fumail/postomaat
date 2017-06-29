@@ -329,6 +329,10 @@ class BasicPlugin(object):
                     allOK = False
 
         return allOK
+    
+    
+    def __str__(self):
+        return self.__class__.__name__
 
 
 def strip_address(address):                    
