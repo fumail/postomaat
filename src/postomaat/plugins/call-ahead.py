@@ -8,26 +8,12 @@ if __name__ =='__main__':
 
 from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config, string_to_actioncode
 from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
+from postomaat.dnsquery import HAVE_DNS, lookup, mxlookup
 import smtplib
 from string import Template
 import logging
 from datetime import datetime, timedelta
 import re
-
-try:
-    from dns import resolver
-    HAVE_DNSPYTHON=True
-except ImportError:
-    resolver = None
-    HAVE_DNSPYTHON=False
-
-try:
-    import DNS
-    HAVE_PYDNS=True
-    DNS.DiscoverNameServers()
-except ImportError:
-    DNS = None
-    HAVE_PYDNS=False
 
 try:
     import redis
@@ -36,8 +22,6 @@ except ImportError:
     redis = None
     HAVE_REDIS=False
 
-HAVE_DNS = HAVE_DNSPYTHON or HAVE_PYDNS
-
 DATEFORMAT = u'%Y-%m-%d %H:%M:%S'
 
 RE_IPV4 = re.compile(
@@ -45,51 +29,6 @@ RE_IPV4 = re.compile(
 RE_IPV6 = re.compile(
     """(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9]))""")
 
-
-
-def alookup(hostname):
-    try:
-        if HAVE_DNSPYTHON:
-            arecs = []
-            arequest = resolver.query(hostname, 'A')
-            for rec in arequest:
-                arecs.append(rec.to_text())
-            return arecs
-        
-        elif HAVE_PYDNS:
-            return DNS.dnslookup(hostname, 'A')
-        
-    except Exception:
-        return None
-    
-    return None
-
-
-
-def mxlookup(domain):
-    try:
-        if HAVE_DNSPYTHON:
-            mxrecs = []
-            mxrequest = resolver.query(domain, 'MX')
-            for rec in mxrequest:
-                mxrecs.append(rec.to_text())
-            mxrecs.sort() #automatically sorts by priority
-            return [x.split(None,1)[-1] for x in mxrecs]
-        
-        elif HAVE_PYDNS:
-            mxrecs=[]
-            mxrequest = DNS.mxlookup(domain)
-            for dataset in mxrequest:
-                if type(dataset) == tuple:
-                    mxrecs.append(dataset)
-                    
-            mxrecs.sort() #automatically sorts by priority
-            return [x[1] for x in mxrecs]
-        
-    except Exception:
-        return None
-    
-    return None
 
 
 class AddressCheck(ScannerPlugin):
@@ -532,7 +471,7 @@ class SMTPTest(object):
             
         result.stage=SMTPTestResult.STAGE_RESOLVE
         if HAVE_DNS and not self.is_ip(relay):
-            arecs = alookup(relay)
+            arecs = lookup(relay)
             if arecs is not None and len(arecs)==0:
                 result.state=SMTPTestResult.TEST_FAILED
                 result.errormessage="relay %s could not be resolved" % relay
