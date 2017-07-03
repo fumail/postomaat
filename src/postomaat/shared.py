@@ -268,12 +268,12 @@ class BasicPlugin(object):
         else:
             self.section=section
         self.config=config
-        self.requiredvars=()
+        self.requiredvars={}
     
     def _logger(self):
         """returns the logger for this plugin"""
         myclass=self.__class__.__name__
-        loggername="postomaat.plugin.%s" % myclass
+        loggername="%s.plugin.%s" % (__package__, myclass)
         return logging.getLogger(loggername)
     
     def lint(self):
@@ -286,24 +286,6 @@ class BasicPlugin(object):
     def check_config(self):
         """Print missing / non-default configuration settings"""
         allOK = True
-
-        # old config style
-        if type(self.requiredvars) == tuple or type(self.requiredvars) == list:
-            for configvar in self.requiredvars:
-                if type(self.requiredvars) == tuple:
-                    (section, config) = configvar
-                else:
-                    config = configvar
-                    section = self.section
-                try:
-                    var = self.config.get(section, config)
-                except configparser.NoOptionError:
-                    print("Missing configuration value [%s] :: %s" % (
-                        section, config))
-                    allOK = False
-                except configparser.NoSectionError:
-                    print("Missing configuration section %s" % (section))
-                    allOK = False
 
         # new config style
         if type(self.requiredvars) == dict:
@@ -326,6 +308,25 @@ class BasicPlugin(object):
                 except configparser.NoOptionError:
                     print("Missing configuration value [%s] :: %s" % (
                         section, config))
+                    allOK = False
+
+        # old config style
+        elif type(self.requiredvars) == tuple or type(self.requiredvars) == list:
+            print('WARNING: old style config in section %s found - consider config update' % self.section)
+            for configvar in self.requiredvars:
+                if type(self.requiredvars) == tuple:
+                    (section, config) = configvar
+                else:
+                    config = configvar
+                    section = self.section
+                try:
+                    var = self.config.get(section, config)
+                except configparser.NoOptionError:
+                    print("Missing configuration value [%s] :: %s" % (
+                        section, config))
+                    allOK = False
+                except configparser.NoSectionError:
+                    print("Missing configuration section %s" % (section))
                     allOK = False
 
         return allOK
@@ -379,7 +380,7 @@ class ScannerPlugin(BasicPlugin):
             
 def get_config(postomaatconfigfile=None,dconfdir=None):
     newconfig=configparser.ConfigParser()
-    logger=logging.getLogger('postomaat.shared')
+    logger=logging.getLogger('%s.shared' % __package__)
     
     if postomaatconfigfile is None:
         postomaatconfigfile='/etc/postomaat/postomaat.conf'
@@ -421,7 +422,7 @@ class FileList(object):
         self._lastreload = 0
         self.linefilters = []
         self.content = []
-        self.logger = logging.getLogger('postomaat.filelist')
+        self.logger = logging.getLogger('%s.filelist' % __package__)
         self.lock = threading.Lock()
 
         # we always strip newline
@@ -508,7 +509,7 @@ class SettingsCache(object):
         self.cachetime=cachetime
         self.cleanupinterval=cleanupinterval
         self.lock=threading.Lock()
-        self.logger=logging.getLogger("postomaat.settingscache")
+        self.logger=logging.getLogger("%s.settingscache" % __package__)
         
         t = threading.Thread(target=self.clear_cache_thread)
         t.daemon = True
