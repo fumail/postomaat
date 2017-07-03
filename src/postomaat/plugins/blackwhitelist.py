@@ -3,10 +3,7 @@
 __version__ = "0.0.1"
 
 from postomaat.shared import ScannerPlugin, OK, DUNNO, REJECT, DISCARD, DEFER_IF_PERMIT, strip_address, extract_domain, SettingsCache
-from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
-import time
-import threading, thread
-import logging
+from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE,get_session
 import fnmatch
 
 

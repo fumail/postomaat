@@ -2,7 +2,7 @@
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, FileList, \
     string_to_actioncode, SettingsCache
-from postomaat.db import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
+from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
 import os
 
 

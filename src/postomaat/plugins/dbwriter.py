@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from postomaat.shared import *
-from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
+from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE,get_session
 
 
 class DBWriter(ScannerPlugin):

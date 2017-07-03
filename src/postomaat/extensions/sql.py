@@ -8,6 +8,7 @@ try:
     SQLALCHEMY_AVAILABLE=True
 except ImportError:
     pass
+ENABLED = SQLALCHEMY_AVAILABLE # fuglu compatibility
 
 
 _sessmaker = None

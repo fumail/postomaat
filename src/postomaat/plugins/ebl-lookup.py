@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from postomaat.shared import ScannerPlugin, DEFER_IF_PERMIT, DUNNO, REJECT, strip_address, extract_domain, apply_template, FileList
-from postomaat.dnsquery import HAVE_DNS, lookup
+from postomaat.extensions.dnsquery import HAVE_DNS, lookup
 import re
 from hashlib import sha1
 
