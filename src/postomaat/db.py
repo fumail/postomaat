@@ -1,4 +1,6 @@
 # -*- coding: UTF-8 -*-
+import logging
+
 SQLALCHEMY_AVAILABLE=False
 try:
     from sqlalchemy import create_engine
@@ -32,3 +34,37 @@ def get_session(connectstring, **kwargs):
     session = scoped_session(_sessmaker)
     session.configure(bind=engine)
     return session
+
+
+
+def get_domain_setting(from_domain, dbconnection, sqlquery, cache, default_value=None, logger=None):
+    if logger is None:
+        logger = logging.getLogger()
+    
+    cached = cache.get_cache(from_domain)
+    if cached is not None:
+        logger.debug("got cached setting for %s" % from_domain)
+        return cached
+
+    settings = default_value
+
+    try:
+        session = get_session(dbconnection)
+
+        # get domain settings
+        dom = session.execute(sqlquery, {'domain': from_domain}).fetchall()
+
+        if not dom and not dom[0] and len(dom[0]) == 0:
+            logger.warning(
+                "Can not load domain setting - domain %s not found. Using default settings." % from_domain)
+        else:
+            settings = dom[0][0]
+
+        session.close()
+
+    except Exception as e:
+        logger.error("Exception while loading setting for %s : %s" % (from_domain, str(e)))
+
+    cache.put_cache(from_domain, settings)
+    logger.debug("refreshed setting for %s" % from_domain)
+    return settings

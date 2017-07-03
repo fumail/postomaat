@@ -2,7 +2,7 @@
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, FileList, \
     string_to_actioncode, SettingsCache
-from postomaat.db import SQLALCHEMY_AVAILABLE,get_session
+from postomaat.db import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
 import os
 
 
@@ -43,46 +43,12 @@ class EnforceTLS(ScannerPlugin):
 
 
 
-    def get_sql_settings(self, to_domain, dbconnection, sqlquery):
-        global SETTINGSCACHE
-
-        if SETTINGSCACHE is None:
-            SETTINGSCACHE = SettingsCache()
-
-        cached = SETTINGSCACHE.get_cache(to_domain)
-        if cached is not None:
-            self.logger.debug("got cached settings for %s" % to_domain)
-            return cached
-
-        settings = {'enforce_inbound_tls': False}
-
-        try:
-            session = get_session(dbconnection)
-
-            # get domain settings
-            dom = session.execute(sqlquery, {'domain': to_domain}).fetchall()
-
-            if not dom and not dom[0]:
-                self.logger.warning(
-                    "Can not load domain settings - domain %s not found. Using default settings." % to_domain)
-            else:
-                settings['enforce_inbound_tls'] = dom[0][0]
-
-            session.close()
-
-        except Exception as e:
-            self.logger.error("Exception while loading settings for %s : %s" % (to_domain, str(e)))
-
-        SETTINGSCACHE.put_cache(to_domain, settings)
-        self.logger.debug("refreshed settings for %s" % to_domain)
-        return settings
-
-
-
     def enforce_domain(self, to_domain):
+        global SETTINGSCACHE
+        dbconnection = self.config.get(self.section,'dbconnection', '').strip()
+        domainlist = self.config.get(self.section,'domainlist')
         enforce = False
 
-        domainlist = self.config.get(self.section,'domainlist')
         if domainlist.strip() == '':
             enforce = True
 
@@ -93,12 +59,11 @@ class EnforceTLS(ScannerPlugin):
                 if to_domain in self.selective_domain_loader.get_list():
                     enforce = True
 
-        elif domainlist.startswith('sql:'):
+        elif domainlist.startswith('sql:') and dbconnection != '':
+            if SETTINGSCACHE is None:
+                SETTINGSCACHE = SettingsCache()
             sqlquery = domainlist[4:]
-            dbconnection = self.config.get(self.section,'dbconnection')
-            setting = self.get_sql_settings(to_domain, dbconnection, sqlquery)
-            if setting.get('enforce_inbound_tls'):
-                enforce = True
+            enforce = get_domain_setting(to_domain, dbconnection, sqlquery, SETTINGSCACHE, False, self.logger)
 
         return enforce
 
