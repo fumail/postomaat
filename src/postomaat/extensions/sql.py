@@ -56,7 +56,7 @@ def get_domain_setting(from_domain, dbconnection, sqlquery, cache, default_value
         dom = session.execute(sqlquery, {'domain': from_domain}).fetchall()
 
         if not dom or not dom[0] or len(dom[0]) == 0:
-            logger.warning(
+            logger.debug(
                 "Can not load domain setting - domain %s not found. Using default settings." % from_domain)
         else:
             settings = dom[0][0]
