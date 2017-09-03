@@ -91,13 +91,14 @@ class EBLLookup(ScannerPlugin):
         response = self.config.get(self.section,'response','').strip()
         query = '%s.%s' % (addr_hash, dnszone)
         result = lookup(query)
-        for rec in result:
-            if rec == response:
-                listed = True
-                result = lookup(query, qtype='TXT')
-                if result:
-                    message = result[0]
-                break
+        if result is not None:
+            for rec in result:
+                if rec == response:
+                    listed = True
+                    result = lookup(query, qtype='TXT')
+                    if result:
+                        message = result[0]
+                    break
                 
         return listed, message
     
