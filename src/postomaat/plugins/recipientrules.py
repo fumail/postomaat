@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import re
-from postomaat.shared import *
+import logging
+import os
+import time
+from postomaat.shared import ScannerPlugin, apply_template, REJECT,DEFER,ACCEPT,OK,DUNNO,DISCARD,HOLD,PREPEND,REDIRECT,WARN
 
 lg=logging.getLogger('postomaat.plugins.recipientrules')
 
