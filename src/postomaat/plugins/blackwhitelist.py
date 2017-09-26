@@ -2,7 +2,7 @@
 
 __version__ = "0.0.1"
 
-from postomaat.shared import ScannerPlugin, OK, DUNNO, REJECT, DISCARD, DEFER_IF_PERMIT, strip_address, extract_domain, SettingsCache
+from postomaat.shared import ScannerPlugin, OK, DUNNO, REJECT, DISCARD, DEFER_IF_PERMIT, strip_address, extract_domain, get_default_cache
 from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE,get_session
 import fnmatch
 
@@ -45,8 +45,6 @@ class BlackWhiteList(ScannerPlugin):
     def __init__(self,config,section=None):
         ScannerPlugin.__init__(self,config,section)
         self.logger=self._logger()
-        
-        self.memcache = SettingsCache()
         
         self.requiredvars={
             'dbconnection':{
@@ -112,8 +110,9 @@ class BlackWhiteList(ScannerPlugin):
     def _get_listings(self):
         usecache = self.config.getboolean(self.section,'usecache')
         listings = None
+        cache = get_default_cache()
         if usecache:
-            listings = self.memcache.get('listings')
+            listings = cache.get('listings')
         if not listings:
             listings = {}
             try:
@@ -135,7 +134,7 @@ class BlackWhiteList(ScannerPlugin):
             except Exception as e:
                 self.logger.error('Failed to get listings: %s' % str(e))
             if listings and usecache:
-                self.memcache.put('listings', listings)
+                cache.put('listings', listings)
         return listings
     
     

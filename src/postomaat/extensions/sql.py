@@ -38,13 +38,14 @@ def get_session(connectstring, **kwargs):
 
 
 
-def get_domain_setting(from_domain, dbconnection, sqlquery, cache, default_value=None, logger=None):
+def get_domain_setting(domain, dbconnection, sqlquery, cache, cachename, default_value=None, logger=None):
     if logger is None:
         logger = logging.getLogger()
-    
-    cached = cache.get_cache(from_domain)
+
+    cachekey = '%s-%s' % (cachename, domain)
+    cached = cache.get_cache(cachekey)
     if cached is not None:
-        logger.debug("got cached setting for %s" % from_domain)
+        logger.debug("got cached setting for %s" % domain)
         return cached
 
     settings = default_value
@@ -53,19 +54,19 @@ def get_domain_setting(from_domain, dbconnection, sqlquery, cache, default_value
         session = get_session(dbconnection)
 
         # get domain settings
-        dom = session.execute(sqlquery, {'domain': from_domain}).fetchall()
+        dom = session.execute(sqlquery, {'domain': domain}).fetchall()
 
         if not dom or not dom[0] or len(dom[0]) == 0:
             logger.debug(
-                "Can not load domain setting - domain %s not found. Using default settings." % from_domain)
+                "Can not load domain setting - domain %s not found. Using default settings." % domain)
         else:
             settings = dom[0][0]
 
         session.close()
 
     except Exception as e:
-        logger.error("Exception while loading setting for %s : %s" % (from_domain, str(e)))
+        logger.error("Exception while loading setting for %s : %s" % (domain, str(e)))
 
-    cache.put_cache(from_domain, settings)
-    logger.debug("refreshed setting for %s" % from_domain)
+    cache.put_cache(cachekey, settings)
+    logger.debug("refreshed setting for %s" % domain)
     return settings

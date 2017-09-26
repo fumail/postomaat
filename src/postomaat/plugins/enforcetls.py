@@ -1,13 +1,9 @@
 # -*- coding: UTF-8 -*-
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, FileList, \
-    string_to_actioncode, SettingsCache
+    string_to_actioncode, get_default_cache
 from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
 import os
-
-
-
-SETTINGSCACHE=None
 
 
 
@@ -44,7 +40,6 @@ class EnforceTLS(ScannerPlugin):
 
 
     def enforce_domain(self, to_domain):
-        global SETTINGSCACHE
         dbconnection = self.config.get(self.section,'dbconnection', '').strip()
         domainlist = self.config.get(self.section,'domainlist')
         enforce = False
@@ -60,10 +55,9 @@ class EnforceTLS(ScannerPlugin):
                     enforce = True
 
         elif domainlist.startswith('sql:') and dbconnection != '':
-            if SETTINGSCACHE is None:
-                SETTINGSCACHE = SettingsCache()
+            cache = get_default_cache()
             sqlquery = domainlist[4:]
-            enforce = get_domain_setting(to_domain, dbconnection, sqlquery, SETTINGSCACHE, False, self.logger)
+            enforce = get_domain_setting(to_domain, dbconnection, sqlquery, cache, self.section, False, self.logger)
 
         return enforce
 

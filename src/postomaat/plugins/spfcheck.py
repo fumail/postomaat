@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, \
-    FileList, string_to_actioncode, SettingsCache
+    FileList, string_to_actioncode, get_default_cache
 from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
 import os
 try:
@@ -15,10 +15,6 @@ try:
     HAVE_NETADDR = True
 except ImportError:
     HAVE_NETADDR = False
-
-
-
-SETTINGSCACHE=None
 
     
 
@@ -74,8 +70,6 @@ class SPFPlugin(ScannerPlugin):
     
     
     def check_this_domain(self, from_domain):
-        global SETTINGSCACHE
-        
         do_check = False
         selective_sender_domain_file=self.config.get(self.section,'domain_selective_spf_file','').strip()
         if selective_sender_domain_file != '' and os.path.exists(selective_sender_domain_file):
@@ -89,9 +83,8 @@ class SPFPlugin(ScannerPlugin):
             sqlquery = self.config.get(self.section, 'domain_sql_query')
             
             if dbconnection!='' and SQLALCHEMY_AVAILABLE:
-                if SETTINGSCACHE is None:
-                    SETTINGSCACHE = SettingsCache()
-                do_check = get_domain_setting(from_domain, dbconnection, sqlquery, SETTINGSCACHE, False, self.logger)
+                cache = get_default_cache()
+                do_check = get_domain_setting(from_domain, dbconnection, sqlquery, cache, self.section, False, self.logger)
                 
             elif dbconnection!='' and not SQLALCHEMY_AVAILABLE:
                 self.logger.error('dbconnection specified but sqlalchemy not available - skipping db lookup')

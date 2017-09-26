@@ -503,7 +503,7 @@ class FileList(object):
 
 
 
-class SettingsCache(object):
+class Cache(object):
     def __init__(self, cachetime=30, cleanupinterval=300):
         self.cache={}
         self.cachetime=cachetime
@@ -556,3 +556,12 @@ class SettingsCache(object):
                     cleancount+=1
             self.lock.release()
             self.logger.debug("Cleaned %s expired entries."%cleancount)
+
+
+
+DEFAULTCACHE=None
+def get_default_cache():
+    global DEFAULTCACHE
+    if DEFAULTCACHE is None:
+        DEFAULTCACHE=Cache()
+    return DEFAULTCACHE
