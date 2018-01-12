@@ -29,7 +29,7 @@ from postomaat.core import MainController
 import signal
 import os
 import optparse
-from checkLogfileConfig import checkLogfileConfig
+from postomaat.checkLogfileConfig import checkLogfileConfig
 
 controller=None
 
