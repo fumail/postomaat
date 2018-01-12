@@ -29,6 +29,7 @@ from postomaat.core import MainController
 import signal
 import os
 import optparse
+from checkLogfileConfig import checkLogfileConfig
 
 controller=None
 
@@ -192,6 +193,10 @@ if lint or debugmsg:
     fc=postomaat.funkyconsole.FunkyConsole()
     print fc.strcolor("postomaat", "yellow"),
     print fc.strcolor(POSTOMAAT_VERSION, "green")
+
+    # check if directory used by logfile exists
+    if not checkLogfileConfig(theloggingfile):
+        sys.exit(1)
 else:
     logging.config.fileConfig(theloggingfile)
 
