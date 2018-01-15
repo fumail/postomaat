@@ -27,7 +27,7 @@ def git_version():
             return vers
         else:
             return POSTOMAAT_VERSION
-    except Exception,e:
+    except Exception:
         return POSTOMAAT_VERSION
 
 
