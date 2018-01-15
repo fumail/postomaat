@@ -3,7 +3,7 @@
 from postomaat.shared import ScannerPlugin, DEFER_IF_PERMIT, DUNNO, REJECT, strip_address, extract_domain, apply_template, FileList
 from postomaat.extensions.dnsquery import HAVE_DNS, lookup
 import re
-from hashlib import sha1
+from hashlib import sha1, md5
 
 
 
@@ -22,6 +22,10 @@ class EBLLookup(ScannerPlugin):
             'dnszone':{
                 'default':'ebl.msbl.org',
                 'description':'the DNS zone to query. defaults to ebl.msbl.org',
+            },
+            'hash': {
+                'default':'sha1',
+                'description':'hash function used by DNS zone. Use one of sha1, md5'
             },
             'response':{
                 'default':'127.0.0.2',
@@ -78,7 +82,13 @@ class EBLLookup(ScannerPlugin):
     
     
     def _create_hash(self, value):
-        myhash = sha1(value).hexdigest()
+        hashtype = self.config.get(self.section,'hash').lower()
+        if hashtype == 'sha1':
+            myhash = sha1(value).hexdigest()
+        elif hashtype == 'md5':
+            myhash = md5(value).hexdigest()
+        else:
+            myhash = ''
         return myhash
     
     
@@ -136,6 +146,9 @@ class EBLLookup(ScannerPlugin):
         
     
     def lint(self):
+        dnszone = self.config.get(self.section,'dnszone','').strip()
+        print 'querying zone %s' % dnszone
+        
         lint_ok = True
         if not self.checkConfig():
             print 'Error checking config'
@@ -145,8 +158,10 @@ class EBLLookup(ScannerPlugin):
             print "no DNS resolver library available - this plugin will do nothing"
             lint_ok = False
             
-        dnszone = self.config.get(self.section,'dnszone','').strip()
-        print 'querying zone %s' % dnszone
+        hashtype = self.config.get(self.section,'hash').lower()
+        if hashtype not in ['sha1', 'md5']:
+            lint_ok = False
+            print('unsupported hash type %s' % hashtype)
         
         addr_hash = self._create_hash('noemail@example.com')
         listed, message = self._ebl_lookup(addr_hash)
