@@ -1,6 +1,1 @@
 - documentation
-- alias system
-- more default plugins (greylist, quotacheck, ..)
-- unicode bug in Call-Ahead still around?
-- apply_template function from fuglu
-- postomaat_conf like fuglu_conf
