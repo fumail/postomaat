@@ -61,3 +61,13 @@ def mxlookup(domain):
         return None
     
     return None
+
+
+
+def revlookup(ip):
+    a = ip.split('.')
+    a.reverse()
+    revip = '.'.join(a)+'.in-addr.arpa'
+    return lookup(revip, qtype='PTR')
+
+
