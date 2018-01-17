@@ -176,7 +176,11 @@ class StatsThread(object):
         self.stayalive = True
 
     def writestats(self):
-        dir = self.config.get('main', 'mrtgdir')
+        if self.config.has_option('main', 'mrtgdir'):
+            dir = self.config.get('main', 'mrtgdir')
+        else:
+            dir = None
+
         if dir == None or dir.strip() == "":
             self.logger.debug(
                 'No mrtg directory defined, disabling stats writer')
