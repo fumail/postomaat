@@ -67,7 +67,7 @@ class ProcManager(object):
             self.tasks.put_nowait(None)
 
     def add_task(self, session):
-        logger.debug("Add new task for grab...")
+        self.logger.debug("Add new task for grab...")
         if self._stayalive:
             self.tasks.put(session)
 
