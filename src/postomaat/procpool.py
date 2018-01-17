@@ -24,7 +24,7 @@ import logging
 import traceback
 import importlib
 import pickle
-#from postomaat.stats import Statskeeper, StatDelta
+from postomaat.stats import Statskeeper, StatDelta
 import threading
 
 class ProcManager(object):
@@ -67,12 +67,14 @@ class ProcManager(object):
             self.tasks.put_nowait(None)
 
     def add_task(self, session):
+        logger.debug("Add new task for grab...")
         if self._stayalive:
             self.tasks.put(session)
 
     def _create_worker(self):
         self._child_id_counter +=1
         worker_name = "Worker-%s"%self._child_id_counter
+        self.logger.debug("Creating worker: "+worker_name)
         worker = multiprocessing.Process(target=postomaat_process_worker, name=worker_name, args=(self.tasks, self.config, self.shared_state, self.child_to_server_messages))
         return worker
 
@@ -95,8 +97,7 @@ class MessageListener(threading.Thread):
         self.name = "Process Message Listener"
         self.message_queue = message_queue
         self.stayalive = True
-        #TODO -> enable Statskeeper, StatDelta
-        #self.statskeeper = Statskeeper()
+        self.statskeeper = Statskeeper()
         self.daemon = True
 
 
@@ -105,13 +106,11 @@ class MessageListener(threading.Thread):
             message = self.message_queue.get()
             event_type = message['event_type']
             if event_type == 'statsdelta': # increase statistics counters
-                #TODO enable Statskeeper, StatDelta
-                print(traceback.format_exc())
-                #try:
-                    #delta = StatDelta(**message)
-                    #self.statskeeper.increase_counter_values(delta)
-                #except:
-                    #print(traceback.format_exc())
+                try:
+                    delta = StatDelta(**message)
+                    self.statskeeper.increase_counter_values(delta)
+                except:
+                    print(traceback.format_exc())
 
 
 def postomaat_process_worker(queue, config, shared_state,child_to_server_messages):
@@ -126,8 +125,8 @@ def postomaat_process_worker(queue, config, shared_state,child_to_server_message
     plugins = controller.plugins
 
     # forward statistics counters to parent process
-    #stats = Statskeeper()
-    #stats.stat_listener_callback.append(lambda event: child_to_server_messages.put(event.as_message()))
+    stats = Statskeeper()
+    stats.stat_listener_callback.append(lambda event: child_to_server_messages.put(event.as_message()))
 
     try:
         while True:
@@ -139,11 +138,8 @@ def postomaat_process_worker(queue, config, shared_state,child_to_server_message
                 workerstate.workerstate = 'ended'
                 return
             workerstate.workerstate = 'starting scan session'
-            #pickled_socket, handler_modulename, handler_classname = task
             pickled_socket = task
             sock = pickle.loads(pickled_socket)
-            #handler_class = getattr(importlib.import_module(handler_modulename), handler_classname)
-            #handler_instance = handler_class(sock, config)
             handler = SessionHandler(sock, config, plugins)
             handler.handlesession(workerstate)
     except KeyboardInterrupt:

@@ -25,9 +25,22 @@ bindaddress=127.0.0.1
 #incoming port(s) (postfix connects here)
 incomingport=9998
 
+#write mrtg statistics
+mrtgdir=
+
 [performance]
+
+#minimum scanner threads
 minthreads=5
+
+#maximum scanner threads
 maxthreads=80
+
+#Method for parallelism, either 'thread' or 'process'
+backend=thread
+
+#Initial number of processes when backend='process'. If 0 (the default), automatically selects twice the number of available virtual cores. Despite its 'initial'-name, this number currently is not adapted automatically.
+initialprocs=0
 
 
 [PluginAlias]

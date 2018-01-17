@@ -27,6 +27,7 @@ import re
 import inspect
 from postomaat.shared import Suspect
 from postomaat.scansession import SessionHandler
+from postomaat.stats import StatsThread
 import threading
 from threadpool import ThreadPool
 import postomaat.procpool
@@ -141,12 +142,22 @@ class MainController(object):
         self.threadpool=None
         self.procpool=None
         self.debugconsole = False
-        
+        self.statsthread = None
+
         
     def _logger(self):
         myclass=self.__class__.__name__
         loggername="%s.%s"%(__package__, myclass)
         return logging.getLogger(loggername)
+
+    def _start_stats_thread(self):
+        self.logger.info("Init Stat Engine")
+        statsthread = StatsThread(self.config)
+        mrtg_stats_thread = threading.Thread(
+            name='MRTG-Statswriter', target=statsthread.writestats, args=())
+        mrtg_stats_thread.daemon = True
+        mrtg_stats_thread.start()
+        return statsthread
 
     def _start_threadpool(self):
         self.logger.info("Init Threadpool")
@@ -177,6 +188,7 @@ class MainController(object):
             self.logger.info('postomaat shut down after fatal error condition')
             sys.exit(1)
 
+        self.statsthread = self._start_stats_thread()
         backend = self.config.get('performance','backend')
         if backend == 'process':
             self.procpool = self._start_processpool()
@@ -300,6 +312,7 @@ class MainController(object):
         return (action,arg)
          
     def shutdown(self):
+        self.statsthread.stayalive = False
         for server in self.servers:
             self.logger.info('Closing server socket on port %s'%server.port)
             server.shutdown()
