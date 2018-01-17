@@ -70,6 +70,7 @@ class ProcManager(object):
         self.logger.debug("Add new task for grab...")
         if self._stayalive:
             self.tasks.put(session)
+        self.logger.debug("After adding new task for grab...")
 
     def _create_worker(self):
         self._child_id_counter +=1
@@ -133,15 +134,21 @@ def postomaat_process_worker(queue, config, shared_state,child_to_server_message
             workerstate.workerstate = 'waiting for task'
             logger.debug("Child process state: "+workerstate.workerstate)
             task = queue.get()
+            logger.debug("Child process state: -> got a new task")
             if task is None: # poison pill
                 logger.debug("Child process received poison pill - shut down")
                 workerstate.workerstate = 'ended'
                 return
             workerstate.workerstate = 'starting scan session'
+            logger.debug("Child process state: "+workerstate.workerstate)
             pickled_socket = task
+            logger.debug("Child process state: -> extract socket")
             sock = pickle.loads(pickled_socket)
+            logger.debug("Child process state: -> create session handler")
             handler = SessionHandler(sock, config, plugins)
+            logger.debug("Child process state: -> call handlesession")
             handler.handlesession(workerstate)
+            logger.debug("Child process state: -> finished scan session")
     except KeyboardInterrupt:
         workerstate.workerstate = 'ended'
         logger.debug("Child process state: "+workerstate.workerstate)
