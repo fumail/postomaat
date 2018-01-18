@@ -27,10 +27,13 @@ import re
 import inspect
 from postomaat.shared import Suspect
 from postomaat.scansession import SessionHandler
+from postomaat.stats import StatsThread
 import threading
 from threadpool import ThreadPool
+import postomaat.procpool
+import multiprocessing
+import multiprocessing.reduction
 import code
-
 
 
 HOSTNAME=socket.gethostname()
@@ -108,7 +111,17 @@ class MainController(object):
                 'section':'performance',
                 'description':'maximum scanner threads',
             },
-                           
+            'backend': {
+                'default': "thread",
+                'section': 'performance',
+                'description': "Method for parallelism, either 'thread' or 'process' ",
+            },
+            'initialprocs': {
+                'default': "0",
+                'section': 'performance',
+                'description': "Initial number of processes when backend='process'. If 0 (the default), automatically selects twice the number of available virtual cores. Despite its 'initial'-name, this number currently is not adapted automatically.",
+            },
+
             #  plugin alias
              'call-ahead':{
                 'default':"postomaat.plugins.call-ahead.AddressCheck",
@@ -125,14 +138,47 @@ class MainController(object):
         self.logger=self._logger()
         self.stayalive=True
         self.threadpool=None
+        self.procpool=None
         self.debugconsole = False
-        
+        self.statsthread = None
+
         
     def _logger(self):
         myclass=self.__class__.__name__
         loggername="%s.%s"%(__package__, myclass)
         return logging.getLogger(loggername)
-    
+
+    def _start_stats_thread(self):
+        self.logger.info("Init Stat Engine")
+        statsthread = StatsThread(self.config)
+        mrtg_stats_thread = threading.Thread(
+            name='MRTG-Statswriter', target=statsthread.writestats, args=())
+        mrtg_stats_thread.daemon = True
+        mrtg_stats_thread.start()
+        return statsthread
+
+    def _start_threadpool(self):
+        self.logger.info("Init Threadpool")
+        try:
+            minthreads = self.config.getint('performance', 'minthreads')
+            maxthreads = self.config.getint('performance', 'maxthreads')
+        except configparser.NoSectionError:
+            self.logger.warning(
+                'Performance section not configured, using default thread numbers')
+            minthreads = 1
+            maxthreads = 3
+
+        queuesize = maxthreads * 10
+        return ThreadPool(minthreads, maxthreads, queuesize)
+
+    def _start_processpool(self):
+        numprocs = self.config.getint('performance','initialprocs')
+        if numprocs < 1:
+            numprocs = multiprocessing.cpu_count() *2
+        self.logger.info("Init process pool with %s worker processes"%(numprocs))
+        pool = postomaat.procpool.ProcManager(numprocs = numprocs, config = self.config)
+        return pool
+
     def startup(self):
         ok=self.load_plugins()
         if not ok:
@@ -140,20 +186,13 @@ class MainController(object):
             self.logger.info('postomaat shut down after fatal error condition')
             sys.exit(1)
 
-        self.logger.info("Init Threadpool")
-        try:
-            minthreads=self.config.getint('performance','minthreads')
-            maxthreads=self.config.getint('performance','maxthreads')
-        except ConfigParser.NoSectionError:
-            self.logger.warning('Performance section not configured, using default thread numbers')
-            minthreads=1
-            maxthreads=3
-        
-        queuesize=maxthreads*10
-        self.threadpool=ThreadPool(minthreads, maxthreads, queuesize)
-        
-        self.logger.info("Init policyd Engine")
-        
+        self.statsthread = self._start_stats_thread()
+        backend = self.config.get('performance','backend')
+        if backend == 'process':
+            self.procpool = self._start_processpool()
+        else: # default backend is 'thread'
+            self.threadpool = self._start_threadpool()
+
         ports=self.config.get('main', 'incomingport')
         for portconfig in ports.split():
             #plugins
@@ -200,17 +239,18 @@ class MainController(object):
     def reload(self):
         """apply config changes"""
         self.logger.info('Applying configuration changes...')
-        
+
         #threadpool changes?
-        minthreads=self.config.getint('performance','minthreads')
-        maxthreads=self.config.getint('performance','maxthreads')
+        if self.config.get('performance','backend') == 'thread' and self.threadpool is not None:
+            minthreads=self.config.getint('performance','minthreads')
+            maxthreads=self.config.getint('performance','maxthreads')
         
-        if self.threadpool.minthreads!=minthreads or self.threadpool.maxthreads!=maxthreads:
-            self.logger.info('Threadpool config changed, initialising new threadpool')
-            queuesize=maxthreads*10
-            currentthreadpool=self.threadpool
-            self.threadpool=ThreadPool(minthreads, maxthreads, queuesize)
-            currentthreadpool.stayalive=False
+            if self.threadpool.minthreads!=minthreads or self.threadpool.maxthreads!=maxthreads:
+                self.logger.info('Threadpool config changed, initialising new threadpool')
+                queuesize=maxthreads*10
+                currentthreadpool=self.threadpool
+                self.threadpool=ThreadPool(minthreads, maxthreads, queuesize)
+                currentthreadpool.stayalive=False
             
         #smtp engine changes?
         ports=self.config.get('main', 'incomingport')
@@ -270,11 +310,15 @@ class MainController(object):
         return (action,arg)
          
     def shutdown(self):
+        self.statsthread.stayalive = False
         for server in self.servers:
             self.logger.info('Closing server socket on port %s'%server.port)
             server.shutdown()
         
-        self.threadpool.stayalive=False
+        if self.threadpool:
+            self.threadpool.stayalive = False
+        if self.procpool:
+            self.procpool.stayalive = False
         self.stayalive=False
         self.logger.info('Shutdown complete')
         self.logger.info('Remaining threads: %s' %threading.enumerate())
@@ -489,31 +533,33 @@ class PolicyServer(object):
         self._socket.close()
         
     def serve(self):
-        #disable to debug... 
-        use_multithreading=True
-        controller=self.controller
-        
+
+        controller = self.controller
+        threadpool = self.controller.threadpool
+        procpool   = self.controller.procpool
+
         self.logger.info('policy server running on port %s'%self.port)
         while self.stayalive:
             try:
                 self.logger.debug('Waiting for connection...')
-                nsd = self._socket.accept()
+                sock, addr = self._socket.accept()
                 if not self.stayalive:
                     break
-                engine = SessionHandler(nsd[0],controller.config,self.plugins)
-                self.logger.debug('Incoming connection from %s'%str(nsd[1]))
-                if use_multithreading:
+                engine = SessionHandler(sock,controller.config,self.plugins)
+                self.logger.debug('Incoming connection from %s'%str(addr))
+                if threadpool:
                     #this will block if queue is full
                     self.controller.threadpool.add_task(engine)
+                elif procpool:
+                    # in multi processing, the other process manages configs and plugins itself, we only pass the minimum required information:
+                    # a pickled version of the socket (this is no longer required in python 3.4, but in python 2 the multiprocessing queue can not handle sockets
+                    # see https://stackoverflow.com/questions/36370724/python-passing-a-tcp-socket-object-to-a-multiprocessing-queue
+
+                    rebuild_socket, reducedSocket = multiprocessing.reduction.reduce_socket(sock)
+                    procpool.add_task(reducedSocket)
+
                 else:
                     engine.handlesession()
             except Exception as e:
                 self.logger.error('Exception in serve(): %s'%str(e))
-
-                 
-
-
-
-     
-
 

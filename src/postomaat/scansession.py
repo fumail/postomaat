@@ -5,6 +5,7 @@ import logging
 import sys
 import traceback
 import time
+import socket
 
 
 class SessionHandler(object):
@@ -119,6 +120,12 @@ class PolicydSession(object):
         self.closeconn()
 
     def closeconn(self):
+        # IMPORTANT: Shutdown the socket explicitly
+        #            before closing, otherwise the next
+        #            incoming connection in PolicyServer
+        #            might time-out in the socket.accept()
+        #            statement
+        self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
     def getrequest(self):
