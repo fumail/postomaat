@@ -104,6 +104,13 @@ class DaemonStuff(object):
         new_umask = 0o077
         os.umask(new_umask)
 
+        # UID currently running process
+        current_uid = os.getuid()
+        if (current_uid == running_uid):
+            # if current user is equal the target user
+            # don't change privileges (typically for debugging)
+            return
+
         os.setgid(running_gid)
         if keep_supplemental_groups:
             os.setgroups(self._get_group_ids(username))

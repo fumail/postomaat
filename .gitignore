@@ -35,3 +35,6 @@ MANIFEST
 .project
 .pydevproject
 .settings/
+
+# C tags file
+tags

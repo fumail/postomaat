@@ -29,6 +29,7 @@ from postomaat.core import MainController
 import signal
 import os
 import optparse
+from postomaat.checkLogfileConfig import checkLogfileConfig
 
 controller=None
 
@@ -116,11 +117,11 @@ parser.add_option("--console", action="store_true", dest="console",
 parser.add_option("--attrs", action="store_true", dest="attrs",
                   default=False, help="print available message attributes and their defaults and exit")
 parser.add_option("-f", "--foreground", action="store_true", dest="foreground", default=False,
-                  help="start fuglu in the foreground, even if daemonize is enabled in the config")
+                  help="start postomaat in the foreground, even if daemonize is enabled in the config")
 parser.add_option("--pidfile", action="store", dest="pidfile",
                   help="use a different pidfile than /var/run/postomaat.pid")
 parser.add_option("-c", "--config", action="store", dest="configfile",
-                  help="use a different config file and disable reading from /etc/fuglu/conf.d")
+                  help="use a different config file and disable reading from /etc/postomaat/conf.d, logging configuration file is supposed to be in the same directory")
 parser.add_option("--debugmsg", action="store_true", dest="debugmsg",
                   default=False, help="simulate a message and print the result. use the debugmsg arguments listed below to override defaults")
 parser.add_option("--debugmsgport", action="store", dest="debugmsgport",help="test a specific port configuration with debugmsg. if not specified, all plugins are run")
@@ -192,6 +193,10 @@ if lint or debugmsg:
     fc=postomaat.funkyconsole.FunkyConsole()
     print fc.strcolor("postomaat", "yellow"),
     print fc.strcolor(POSTOMAAT_VERSION, "green")
+
+    # check if directory used by logfile exists
+    if not checkLogfileConfig(theloggingfile):
+        sys.exit(1)
 else:
     logging.config.fileConfig(theloggingfile)
 
