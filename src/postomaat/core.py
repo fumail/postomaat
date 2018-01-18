@@ -32,10 +32,8 @@ import threading
 from threadpool import ThreadPool
 import postomaat.procpool
 import multiprocessing
+import multiprocessing.reduction
 import code
-from multiprocessing.reduction import ForkingPickler
-import StringIO
-
 
 
 HOSTNAME=socket.gethostname()
@@ -556,20 +554,12 @@ class PolicyServer(object):
                     # in multi processing, the other process manages configs and plugins itself, we only pass the minimum required information:
                     # a pickled version of the socket (this is no longer required in python 3.4, but in python 2 the multiprocessing queue can not handle sockets
                     # see https://stackoverflow.com/questions/36370724/python-passing-a-tcp-socket-object-to-a-multiprocessing-queue
-                    #handler_classname = self.protohandlerclass.__name__
-                    #handler_modulename = self.protohandlerclass.__module__
-                    #task = forking_dumps(sock),handler_modulename, handler_classname
-                    task = forking_dumps(sock)
-                    procpool.add_task(task)
+
+                    rebuild_socket, reducedSocket = multiprocessing.reduction.reduce_socket(sock)
+                    procpool.add_task(reducedSocket)
+
                 else:
                     engine.handlesession()
             except Exception as e:
                 self.logger.error('Exception in serve(): %s'%str(e))
-
-def forking_dumps(obj):
-    """ Pickle a socket This is required to pass the socket in multiprocessing"""
-    buf = StringIO.StringIO()
-    ForkingPickler(buf).dump(obj)
-    return buf.getvalue()
-
 

@@ -1,5 +1,4 @@
-#   Copyright 2009-2018 Oli Schacher
-#
+#   Copyright 2009-2018 Oli Schacher #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -22,8 +21,6 @@ from postomaat.scansession import SessionHandler
 import postomaat.core
 import logging
 import traceback
-import importlib
-import pickle
 from postomaat.stats import Statskeeper, StatDelta
 import threading
 
@@ -133,25 +130,24 @@ def postomaat_process_worker(queue, config, shared_state,child_to_server_message
         while True:
             workerstate.workerstate = 'waiting for task'
             logger.debug("Child process state: "+workerstate.workerstate)
+
+            # get task
+            # Note: The task is a compressed socket
             task = queue.get()
+
             logger.debug("Child process state: -> got a new task")
             if task is None: # poison pill
                 logger.debug("Child process received poison pill - shut down")
                 workerstate.workerstate = 'ended'
                 return
             workerstate.workerstate = 'starting scan session'
-            logger.debug("Child process state: "+workerstate.workerstate)
-            pickled_socket = task
-            logger.debug("Child process state: -> extract socket")
-            sock = pickle.loads(pickled_socket)
-            logger.debug("Child process state: -> create session handler")
+
+            # recreate socket
+            sock = multiprocessing.reduction.rebuild_socket(*task)
             handler = SessionHandler(sock, config, plugins)
-            logger.debug("Child process state: -> call handlesession")
             handler.handlesession(workerstate)
-            logger.debug("Child process state: -> finished scan session")
     except KeyboardInterrupt:
         workerstate.workerstate = 'ended'
-        logger.debug("Child process state: "+workerstate.workerstate)
     except:
         trb = traceback.format_exc()
         logger.error("Exception in child process: %s"%trb)
