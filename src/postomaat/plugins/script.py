@@ -4,6 +4,13 @@ from postomaat.shared import ScannerPlugin,DUNNO,ACCEPT,DEFER,REJECT
 import os
 import traceback
 import time
+try:
+    # python >= 2.5
+    import runpy
+    # needed since "execfile" is not
+    # available in python >= 3
+except:
+    pass
 
 class Stopped(Exception):
     pass
@@ -80,7 +87,7 @@ example script:
     def lint_code(self):
         scriptdir=self.config.get(self.section,'scriptdir')
         if not os.path.isdir(scriptdir):
-            print "Script dir %s does not exist"%scriptdir
+            print("Script dir %s does not exist"%scriptdir)
             return False
         scripts=self.get_scripts()
         counter=0
@@ -92,9 +99,9 @@ example script:
                 compile(source,script,'exec')
             except Exception:
                 trb=traceback.format_exc()
-                print "Script %s failed to compile: %s"%(script,trb)
+                print("Script %s failed to compile: %s"%(script,trb))
                 return False
-        print "%s scripts found"%counter
+        print("%s scripts found"%counter)
         return True
     
     def _debug(self,suspect,message):
@@ -110,7 +117,7 @@ example script:
         def stop():
             raise Stopped()
         
-        scriptlocals=dict(
+        scriptenv=dict(
                     action=action,
                     message=message,
                     suspect=suspect,
@@ -121,11 +128,19 @@ example script:
                     
         )
         
-        scriptglobals=globals().copy()
         try:
-            execfile(filename,scriptglobals,scriptlocals)
-            action=scriptlocals['action']
-            message=scriptlocals['message']
+            try:
+                # does not exist for python >= 3
+                execfile(filename, scriptenv)
+            except NameError:
+                # runpy exists since python 2.5
+                scriptenv = runpy.run_path(filename, scriptenv)
+            except Exception as e:
+                raise e
+
+
+            action=scriptenv['action']
+            message=scriptenv['message']
         except Stopped:
             pass
         except Exception:

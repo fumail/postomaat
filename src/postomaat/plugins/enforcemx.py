@@ -204,21 +204,21 @@ class EnforceMX(ScannerPlugin):
         lint_ok = True
         
         if not HAVE_NETADDR:
-            print 'netaddr python module not available - please install'
+            print('netaddr python module not available - please install')
             lint_ok =  False
         
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
         
         datafile = self.config.get('EnforceMX', 'datafile_mx')
         if not os.path.exists(datafile):
-            print 'MX datafile not found - this plugin will not enforce MX usage'
+            print('MX datafile not found - this plugin will not enforce MX usage')
             lint_ok = False
             
         datafile = self.config.get('EnforceMX', 'datafile_spf')
         if not os.path.exists(datafile):
-            print 'SPF datafile not found - this plugin will not check fake SPF'
+            print('SPF datafile not found - this plugin will not check fake SPF')
             lint_ok = False
         
         return lint_ok

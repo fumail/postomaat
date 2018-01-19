@@ -29,8 +29,11 @@
 from optparse import OptionParser
 import sys
 import os
-import ConfigParser
-import StringIO
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
+from io import StringIO
 import logging
 
 def stderr(msg):
@@ -39,10 +42,10 @@ def stderr(msg):
 
 def print_config(config):
     for sec in config.sections():
-        print ""
-        print "[%s]"%sec
+        print("")
+        print("[%s]"%sec)
         for op,val in config.items(sec):
-            print "%s=%s"%(op,val)
+            print("%s=%s"%(op,val))
 
 def cloneConfig(config):
     tmpfile=StringIO.StringIO()
@@ -86,8 +89,8 @@ def print_overrides(defaultconfig,userconfig,controller):
                 userval=userconfig.get(sec,opt)
                 if not config_equals(defaultval,userval):
                     if not have_printed_section:
-                        print ""
-                        print "[%s]"%sec
+                        print("")
+                        print("[%s]"%sec)
                         have_printed_section=True
                     
                     pdef=defaultval
@@ -103,7 +106,7 @@ def print_overrides(defaultconfig,userconfig,controller):
                     if pval.strip()!='' and meta!=None and 'confidential' in meta and meta['confidential']:
                         pval="***REDACTED***"
                     
-                    print "%s=%s (def: %s)"%(opt,pval,pdef)
+                    print("%s=%s (def: %s)"%(opt,pval,pdef))
 
 
 def make_config(controller,onlysection=None):
@@ -111,7 +114,7 @@ def make_config(controller,onlysection=None):
     for sec in config.sections():
         if onlysection!=None and sec!=onlysection:
             continue
-        print "\n[%s]"%sec
+        print("\n[%s]"%sec)
         for opt,val in config.items(sec):
             #print sec,opt
             meta=get_config_meta(controller,sec,opt)
@@ -119,9 +122,9 @@ def make_config(controller,onlysection=None):
 
             if meta!=None and 'description' in meta:
                 desc='\n#'.join(meta['description'].split('\n'))
-                print '\n#%s'%desc
+                print('\n#%s'%desc)
             
-            print "%s=%s"%(opt,val)
+            print("%s=%s"%(opt,val))
     
 
 

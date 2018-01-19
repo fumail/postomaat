@@ -176,7 +176,7 @@ class Worker(threading.Thread):
             if self.noisy:
                 self.logger.debug('Doing work')
             try:
-                sesshandler.handlesession(self)
+                ysesshandler.handlesession(self)
             except Exception as e:
                 self.logger.error('Unhandled Exception : %s' % e)
             self.workerstate = 'task completed'

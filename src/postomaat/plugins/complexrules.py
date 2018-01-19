@@ -215,7 +215,7 @@ class ComplexRuleParser(object):
             _=makeparser({}).parseString(rule)  #test
             self.rules.append(rule)
             return True
-        except ParseException,pe:
+        except ParseException as pe:
             self.logger.error("Could not parse rule -->%s<-- "%rule)
             self.logger.error(str(pe))
         return False
@@ -263,7 +263,7 @@ class ComplexRuleParser(object):
                     self.logger.warn("warning: complex max execution time limit reached - not all rules have been executed")
                     break
                 
-            except ParseException,pe:
+            except ParseException as pe:
                 self.logger.warning("""Could not apply rule "%s" to message %s """%(rule,values))
                 self.logger.warning(str(pe))
                 
@@ -355,19 +355,19 @@ class ComplexRules(ScannerPlugin):
 
     def lint(self):
         if not PYPARSING_AVAILABLE:
-            print "pyparsing is not installed, can not use complex rules"
+            print("pyparsing is not installed, can not use complex rules")
             return False
 
         if RE2_AVAILABLE:
-            print "Using re2(google) library"
+            print("Using re2(google) library")
 
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             return False
 
         filename=self.config.get(self.section,'filename').strip()
         if not os.path.exists(filename):
-            print "Rulefile %s does not exist"%filename
+            print("Rulefile %s does not exist"%filename)
             return False
         
         self.filereloader.filename=filename
@@ -377,7 +377,7 @@ class ComplexRules(ScannerPlugin):
         self.ruleparser.clear_rules()
         ok= self.ruleparser.rules_from_string(self.filereloader.content)
         rulecount=len(self.ruleparser.rules)
-        print "%s rules ok"%(rulecount)
+        print("%s rules ok"%(rulecount))
         return ok
 
                         
@@ -387,19 +387,19 @@ class ComplexRules(ScannerPlugin):
 if __name__=='__main__':
     logging.basicConfig(level=logging.DEBUG)
     c=ComplexRuleParser()
-    print "Load Rules:\n----"
+    print("Load Rules:\n----")
     rules="""
 reverse_client_name == "unknown" && helo_name=="21cn.com" REJECT go away! 
 reverse_client_name == "unknown" && helo_name~=/^\[[0-9a-fA-F:.]+\]$/im REJECT No FcrDNS and address literal HELO - Who are you?
 
 sender~=/^EX_.+@girlfriends.com/i && (size<100 || size>20000) REJECT say something.. but not everything
 """
-    print rules
+    print(rules)
     
     c.rules_from_string(rules)
-    print "----"
-    print "%s rules loaded"%(len(c.rules))
-    print "Tests:"
+    print("----")
+    print("%s rules loaded"%(len(c.rules)))
+    print("Tests:")
     message1={'reverse_client_name':'unknown','helo_name':'21cn.com'}
     message2={'reverse_client_name':'unknown','helo_name':'gmail.com','size':'5000'}
     message3={'reverse_client_name':'bla.com','helo_name':'21cn.com'}
@@ -419,18 +419,18 @@ sender~=/^EX_.+@girlfriends.com/i && (size<100 || size>20000) REJECT say somethi
     
     for test in tests:
         msg,expaction,expmessage=test
-        print ""
-        print "Testing message: %s..."%msg
+        print("")
+        print("Testing message: %s..."%msg)
         retaction,retmessage=c.apply(msg)
         retaction=retaction.upper()
         if retaction==expaction and retmessage==expmessage:
-            print "Test OK (%s %s)"%(retaction,retmessage)
+            print("Test OK (%s %s)"%(retaction,retmessage))
         else:
-            print "FAIL! : Expected '%s %s' got '%s %s'"%(expaction,expmessage,retaction,retmessage)
+            print("FAIL! : Expected '%s %s' got '%s %s'"%(expaction,expmessage,retaction,retmessage))
     
    
     ### perftest
-    print "Starting perftest"
+    print("Starting perftest")
     c.logger.setLevel(logging.CRITICAL)
     start=time.time()
     iterations=10000
@@ -440,4 +440,4 @@ sender~=/^EX_.+@girlfriends.com/i && (size<100 || size>20000) REJECT say somethi
 
     end=time.time()
     diff=end-start
-    print "Perftest: %s regex rules in %.2f seconds"%(iterations,diff)
+    print("Perftest: %s regex rules in %.2f seconds"%(iterations,diff))

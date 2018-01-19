@@ -117,7 +117,7 @@ class BlackWhiteList(ScannerPlugin):
             listings = {}
             try:
                 session = get_session(self.config.get(self.section,'dbconnection'))
-                listing_types = [unicode(l['name']) for l in LISTING_TYPES]
+                listing_types = [(l['name']).decode('utf-8') for l in LISTING_TYPES]
                 result = session.query(UserPref).filter(UserPref.preference.in_(listing_types)).all()
                 
                 for r in result:
@@ -240,7 +240,7 @@ class BlackWhiteList(ScannerPlugin):
     def lint(self):
         status = True
         if not SQLALCHEMY_AVAILABLE:
-            print "sqlalchemy is not installed"
+            print("sqlalchemy is not installed")
             status = False
             
         try:
@@ -248,10 +248,10 @@ class BlackWhiteList(ScannerPlugin):
             try:
                 session.query(UserPref).first()
             except Exception as e:
-                print "Table or field configuration error: %s"%str(e)
+                print("Table or field configuration error: %s"%str(e))
                 status = False
         except Exception as e:
-            print "DB Connection failed. Reason: %s"%(str(e))
+            print("DB Connection failed. Reason: %s"%(str(e)))
             status = False
             
         if status:
@@ -260,11 +260,11 @@ class BlackWhiteList(ScannerPlugin):
             for listingtype in listings:
                 for user in listings[listingtype]:
                     count += len(listings[listingtype][user])
-            print "found %s listings" % count
+            print("found %s listings" % count)
             
         for check in LISTING_TYPES:
             if self._get_action(check['name']) is None:
-                print 'Invalid action %s for action_%s' % (self.config.get(self.section,'action_%s' % check['name']), check['name'])
+                print('Invalid action %s for action_%s' % (self.config.get(self.section,'action_%s' % check['name']), check['name']))
                 status = False
             
         return status

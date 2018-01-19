@@ -143,7 +143,7 @@ def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
         values=valuesfunction(values)
     else:
         #replace None with empty string
-        for k,v in values.iteritems():
+        for k,v in iter(values.items()):
             if v is None:
                 values[k]=''
     
@@ -363,7 +363,7 @@ def extract_domain(address, lowercase=True):
                 domain = domain.lower()
             return domain                                      
         except Exception as e:
-            raise ValueError,"invalid email address: '%s'"%address
+            raise ValueError("invalid email address: '%s'"%address)
 
 class ScannerPlugin(BasicPlugin):
     """Scanner Plugin Base Class"""
