@@ -190,7 +190,7 @@ class Suspect(object):
 
     def get_value(self,key):
         """returns one of the postfix supplied values"""
-        if not self.values.has_key(key):
+        if not key in self.values:
             return None
         return self.values[key] 
     
@@ -204,7 +204,7 @@ class Suspect(object):
           
     def get_tag(self,key):
         """returns the tag value"""
-        if not self.tags.has_key(key):
+        if not key in self.tags:
             return None
         return self.tags[key]
 
