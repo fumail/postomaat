@@ -29,7 +29,7 @@ from postomaat.shared import Suspect
 from postomaat.scansession import SessionHandler
 from postomaat.stats import StatsThread
 import threading
-from threadpool import ThreadPool
+from postomaat.threadpool import ThreadPool
 import postomaat.procpool
 import multiprocessing
 import multiprocessing.reduction
