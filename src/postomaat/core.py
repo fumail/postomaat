@@ -37,6 +37,13 @@ import multiprocessing
 import multiprocessing.reduction
 import code
 
+from multiprocessing.reduction import ForkingPickler
+try:
+   from StringIO import StringIO
+except:
+   # Python 3
+   from io import BytesIO as StringIO
+
 
 HOSTNAME=socket.gethostname()
          
@@ -558,11 +565,17 @@ class PolicyServer(object):
                     # a pickled version of the socket (this is no longer required in python 3.4, but in python 2 the multiprocessing queue can not handle sockets
                     # see https://stackoverflow.com/questions/36370724/python-passing-a-tcp-socket-object-to-a-multiprocessing-queue
 
-                    rebuild_socket, reducedSocket = multiprocessing.reduction.reduce_socket(sock)
-                    procpool.add_task(reducedSocket)
+                    task = forking_dumps(sock)
+                    procpool.add_task(task)
+
 
                 else:
                     engine.handlesession()
             except Exception as e:
-                self.logger.error('Exception in serve(): %s'%str(e))
+                self.logger.exception(e)
 
+def forking_dumps(obj):
+    """ Pickle a socket This is required to pass the socket in multiprocessing"""
+    buf = StringIO()
+    ForkingPickler(buf).dump(obj)
+    return buf.getvalue()

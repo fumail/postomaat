@@ -64,7 +64,7 @@ class SessionHandler(object):
         except KeyboardInterrupt:
             sys.exit(0)
         except Exception as e:
-            self.logger.error('Exception: %s' % e)
+            self.logger.exception(e)
             if sess is not None:
                 sess.closeconn()
         self.logger.debug('Session finished')
@@ -116,7 +116,7 @@ class PolicydSession(object):
         ret = action
         if arg is not None and arg.strip() != "":
             ret = "%s %s" % (action, arg.strip())
-        self.socket.send('action=%s\n\n' % ret)
+        self.socket.send(('action=%s\n\n' % ret).encode())
         self.closeconn()
 
     def closeconn(self):
