@@ -40,7 +40,7 @@ import code
 from multiprocessing.reduction import ForkingPickler
 try:
    from StringIO import StringIO
-except:
+except ImportError:
    # Python 3
    from io import BytesIO as StringIO
 
