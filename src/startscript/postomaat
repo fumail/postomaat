@@ -18,7 +18,10 @@
 #
 # main startup file
 
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 from postomaat import POSTOMAAT_VERSION
 from postomaat.daemon import DaemonStuff
 import logging
@@ -127,13 +130,13 @@ parser.add_option("--debugmsg", action="store_true", dest="debugmsg",
 parser.add_option("--debugmsgport", action="store", dest="debugmsgport",help="test a specific port configuration with debugmsg. if not specified, all plugins are run")
 parser.add_option("--debug", action="store_true", dest="debug",
                   default=False, help="enable verbose/debug output for lint/debugmsg")
-for k,v in defaultattrs.iteritems():
+for k,v in iter(defaultattrs.items()):
     parser.add_option("--%s"%k,action="store",dest=k,default=None,help="debugmsg argument, default=%s"%v)
 
 (opts, args) = parser.parse_args()
 if len(args) > 0:
-    print "Unknown option(s): %s" % args
-    print ""
+    print("Unknown option(s): %s" % args)
+    print("")
     parser.print_help()
     sys.exit(1)
 
@@ -153,17 +156,17 @@ if opts.configfile:
     dconfdir = None
 
 if opts.attrs:
-    print "Supported attributes and their default:"
-    print "See http://www.postfix.org/SMTPD_POLICY_README.html#protocol for a full description"
-    print ""
-    for k,v in defaultattrs.iteritems():
-        print "%s : %s"%(k,v)
+    print("Supported attributes and their default:")
+    print("See http://www.postfix.org/SMTPD_POLICY_README.html#protocol for a full description")
+    print("")
+    for k,v in iter(defaultattrs.items()):
+        print("%s : %s"%(k,v))
     sys.exit(0)
 
 
 config=ConfigParser.ConfigParser()
 if not os.path.exists(theconfigfile):
-    print """Configfile (%s) not found. Please create it by renaming the .dist file and modifying it to your needs"""%theconfigfile
+    print("""Configfile (%s) not found. Please create it by renaming the .dist file and modifying it to your needs"""%theconfigfile)
     sys.exit(1)
 with open(theconfigfile) as fp:
     readconfig=config.readfp(fp)
@@ -191,8 +194,8 @@ if lint or debugmsg:
     logging.basicConfig(level=level)
     
     fc=postomaat.funkyconsole.FunkyConsole()
-    print fc.strcolor("postomaat", "yellow"),
-    print fc.strcolor(POSTOMAAT_VERSION, "green")
+    print(fc.strcolor("postomaat", "yellow"),)
+    print(fc.strcolor(POSTOMAAT_VERSION, "green"))
 
     # check if directory used by logfile exists
     if not checkLogfileConfig(theloggingfile):
@@ -222,11 +225,11 @@ elif debugmsg:
     for arg in defaultattrs.keys():
         if getattr(opts,arg) is not None:
             attrs[arg]=getattr(opts,arg)
-    print attrs
+    print(attrs)
     action,arg=controller.test(attrs,port=opts.debugmsgport)
     if arg is None:
         arg=""
-    print "Result: %s %s"%(action.upper(),arg)
+    print("Result: %s %s"%(action.upper(),arg))
 else:
     signal.signal(signal.SIGHUP, sighup)
     if console:

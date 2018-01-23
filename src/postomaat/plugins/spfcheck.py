@@ -181,44 +181,44 @@ class SPFPlugin(ScannerPlugin):
         lint_ok = True
         
         if not HAVE_SPF:
-            print 'pyspf or pydns module not installed - this plugin will do nothing'
+            print('pyspf or pydns module not installed - this plugin will do nothing')
             lint_ok = False
             
         if not HAVE_NETADDR:
-            print 'WARNING: netaddr python module not installed - IP whitelist will not support CIDR notation'
+            print('WARNING: netaddr python module not installed - IP whitelist will not support CIDR notation')
 
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
             
         selective_sender_domain_file=self.config.get(self.section,'domain_selective_spf_file','').strip()
         if selective_sender_domain_file != '' and not os.path.exists(selective_sender_domain_file):
-            print "domain_selective_spf_file %s does not exist" % selective_sender_domain_file
+            print("domain_selective_spf_file %s does not exist" % selective_sender_domain_file)
             lint_ok = False
             
         ip_whitelist_file=self.config.get(self.section,'ip_whitelist_file', '').strip()
         if ip_whitelist_file != '' and os.path.exists(ip_whitelist_file):
-            print "ip_whitelist_file %s does not exist - IP whitelist is disabled" % ip_whitelist_file
+            print("ip_whitelist_file %s does not exist - IP whitelist is disabled" % ip_whitelist_file)
             lint_ok = False
         
         sqlquery = self.config.get(self.section, 'domain_sql_query')
         dbconnection = self.config.get(self.section, 'dbconnection', '').strip()
         if not SQLALCHEMY_AVAILABLE and dbconnection != '':
-            print 'SQLAlchemy not available, cannot use SQL backend'
+            print('SQLAlchemy not available, cannot use SQL backend')
             lint_ok = False
         elif dbconnection == '':
-            print 'No DB connection defined. Disabling SQL backend'
+            print('No DB connection defined. Disabling SQL backend')
         else:
             if not sqlquery.lower().startswith('select '):
                 lint_ok = False
-                print 'SQL statement must be a SELECT query'
+                print('SQL statement must be a SELECT query')
             if lint_ok:
                 try:
                     conn=get_session(dbconnection)
                     conn.execute(sqlquery, {'domain':'example.com'})
                 except Exception as e:
                     lint_ok = False
-                    print str(e)
+                    print(str(e))
         
         return lint_ok
     

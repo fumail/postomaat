@@ -71,14 +71,14 @@ class HELOTLDPlugin(ScannerPlugin):
         tld_file=self.config.get(self.section,'tldfile')
         exceptionfile=self.config.get(self.section,'exceptionfile')
         if not os.path.exists(tld_file):
-            print "TLD file %s not found"%tld_file
+            print("TLD file %s not found"%tld_file)
             lint_ok = False
         if not os.path.exists(exceptionfile):
-            print "TLD exception file %s not found"%exceptionfile
+            print("TLD exception file %s not found"%exceptionfile)
             lint_ok = False
 
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
 
         return lint_ok

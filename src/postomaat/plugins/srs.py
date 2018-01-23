@@ -104,11 +104,11 @@ class SRSBounceVerify(ScannerPlugin):
         allok = self.checkConfig()
         if not HAVE_SRS:
             allok = False
-            print 'SRS library not found'
+            print('SRS library not found')
             
         if self.config.get(self.section, 'secret') == '':
             allok = False
-            print 'no secret set in config'
+            print('no secret set in config')
         
         if allok:
             srs = self._init_srs()
