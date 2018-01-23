@@ -147,15 +147,15 @@ class EBLLookup(ScannerPlugin):
     
     def lint(self):
         dnszone = self.config.get(self.section,'dnszone','').strip()
-        print 'querying zone %s' % dnszone
+        print('querying zone %s' % dnszone)
         
         lint_ok = True
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
             
         if not HAVE_DNS:
-            print "no DNS resolver library available - this plugin will do nothing"
+            print("no DNS resolver library available - this plugin will do nothing")
             lint_ok = False
             
         hashtype = self.config.get(self.section,'hash').lower()
@@ -167,14 +167,14 @@ class EBLLookup(ScannerPlugin):
         listed, message = self._ebl_lookup(addr_hash)
         if not listed:
             lint_ok = False
-            print 'test entry not found in dns zone'
+            print('test entry not found in dns zone')
         else:
-            print 'test entry found in dns zone: %s' % message
+            print('test entry found in dns zone: %s' % message)
             
         if lint_ok:
             whitelist_file = self.config.get(self.section,'whitelist_file')
             if whitelist_file.strip() == '':
-                print 'No whitelist defined'
+                print('No whitelist defined')
                 
         return lint_ok
                 

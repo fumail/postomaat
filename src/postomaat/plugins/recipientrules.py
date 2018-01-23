@@ -305,12 +305,12 @@ class RecipientRules(ScannerPlugin):
     def lint_file(self):
         configfile=self.config.get(self.section,'configfile')
         if not os.path.isfile(configfile):
-            print "Config file %s does not exist"%configfile
+            print("Config file %s does not exist"%configfile)
             return False
         
         dic=self.load_file(configfile)
-        for k,v in dic.iteritems():
-            print "%s : %s rules"%(k,len(v))
+        for k,v in iter(dic.items()):
+            print("%s : %s rules"%(k,len(v)))
             
         return True
     

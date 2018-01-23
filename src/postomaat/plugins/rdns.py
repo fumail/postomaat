@@ -39,12 +39,12 @@ class IdentityCrisis(ScannerPlugin):
         retaction=self.config.get(self.section,'action').strip().lower()
         reasonable_actions=[REJECT,DEFER,DEFER_IF_PERMIT,FILTER,HOLD,PREPEND,WARN]
         if retaction not in reasonable_actions:
-            print "are you sure about action '%s' ?"%retaction
-            print "I'd expect one of %s"%(",".join(reasonable_actions))
+            print("are you sure about action '%s' ?"%retaction)
+            print("I'd expect one of %s"%(",".join(reasonable_actions)))
             lint_ok=False
         
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
         
         return lint_ok
@@ -93,12 +93,12 @@ class CreativeTLD(ScannerPlugin):
         retaction=self.config.get(self.section,'action').strip().lower()
         reasonable_actions=[REJECT,DEFER,DEFER_IF_PERMIT,FILTER,HOLD,PREPEND,WARN]
         if retaction not in reasonable_actions:
-            print "are you sure about action '%s' ?"%retaction
-            print "I'd expect one of %s"%(",".join(reasonable_actions))
+            print("are you sure about action '%s' ?"%retaction)
+            print("I'd expect one of %s"%(",".join(reasonable_actions)))
             lint_ok=False
 
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
 
         return lint_ok

@@ -86,25 +86,25 @@ class EnforceTLS(ScannerPlugin):
     def lint(self):
         lint_ok = True
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
             
         if lint_ok:
             domainlist = self.config.get(self.section,'domainlist')
             if domainlist.strip() == '':
-                print 'Enforcing TLS for all domains'
+                print('Enforcing TLS for all domains')
             elif domainlist.startswith('txt:'):
                 domainfile = domainlist[4:]
                 if not os.path.exists(domainfile):
-                    print 'Cannot find domain file %s' % domainfile
+                    print('Cannot find domain file %s' % domainfile)
                     lint_ok = False
             elif domainlist.startswith('sql:'):
                 sqlquery = domainlist[4:]
                 if not sqlquery.lower().startswith('select '):
                     lint_ok = False
-                    print 'SQL statement must be a SELECT query'
+                    print('SQL statement must be a SELECT query')
                 if not SQLALCHEMY_AVAILABLE:
-                    print 'SQLAlchemy not available, cannot use sql backend'
+                    print('SQLAlchemy not available, cannot use sql backend')
                 if lint_ok:
                     dbconnection = self.config.get(self.section, 'dbconnection')
                     try:
@@ -112,10 +112,10 @@ class EnforceTLS(ScannerPlugin):
                         conn.execute(sqlquery, {'domain':'example.com'})
                     except Exception as e:
                         lint_ok = False
-                        print str(e)
+                        print(str(e))
             else:
                 lint_ok = False
-                print 'Could not determine domain list backend type'
+                print('Could not determine domain list backend type')
         
         return lint_ok
     

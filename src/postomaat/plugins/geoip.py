@@ -224,36 +224,36 @@ class GeoIPPlugin(ScannerPlugin):
         lint_ok = True
         
         if HAVE_GEOIP == LIB_GEOIP_NONE:
-            print 'No geoip module installed - this plugin will do nothing'
+            print('No geoip module installed - this plugin will do nothing')
             lint_ok = False
         elif HAVE_GEOIP == LIB_GEOIP_PYGEOIP:
-            print 'using pygeoip'
+            print('using pygeoip')
         elif HAVE_GEOIP == LIB_GEOIP_MAXMIND:
-            print 'using maxmind geoip'
+            print('using maxmind geoip')
         
             
         database = self.config.get(self.section, 'database')
         if not os.path.exists(database):
-            print 'Could not find geoip database file - this plugin will do nothing'
+            print('Could not find geoip database file - this plugin will do nothing')
             lint_ok = False
         else:
-            print 'Using GeoIP Database in %s' % database
+            print('Using GeoIP Database in %s' % database)
         
         if not self.checkConfig():
-            print 'Error checking config'
+            print('Error checking config')
             lint_ok = False
 
         blacklist = self._get_list('blacklist')
         whitelist = self._get_list('whitelist')
         if not blacklist and not whitelist:
-            print 'Neither black nor white list defined'
+            print('Neither black nor white list defined')
             lint_ok = False
         elif blacklist and whitelist:
-            print 'Black and white list defined - only using blacklist'
+            print('Black and white list defined - only using blacklist')
             lint_ok = False
         else:
-            print 'Blacklist: %s' % blacklist
-            print 'Whitelist: %s' % whitelist
+            print('Blacklist: %s' % blacklist)
+            print('Whitelist: %s' % whitelist)
 
         return lint_ok
         

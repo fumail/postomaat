@@ -23,6 +23,7 @@ import logging
 import traceback
 from postomaat.stats import Statskeeper, StatDelta
 import threading
+import pickle
 
 class ProcManager(object):
     def __init__(self, numprocs = None, queuesize=100, config = None):
@@ -33,8 +34,8 @@ class ProcManager(object):
         self.numprocs = numprocs
         self.workers = []
         self.queuesize = queuesize
-        self.tasks = multiprocessing.queues.Queue(queuesize)
-        self.child_to_server_messages = multiprocessing.queues.Queue()
+        self.tasks = multiprocessing.Queue(queuesize)
+        self.child_to_server_messages = multiprocessing.Queue()
 
         self.logger = logging.getLogger('%s.procpool' % __package__)
         self._stayalive = True
@@ -143,7 +144,7 @@ def postomaat_process_worker(queue, config, shared_state,child_to_server_message
             workerstate.workerstate = 'starting scan session'
 
             # recreate socket
-            sock = multiprocessing.reduction.rebuild_socket(*task)
+            sock = pickle.loads(task)
             handler = SessionHandler(sock, config, plugins)
             handler.handlesession(workerstate)
     except KeyboardInterrupt:

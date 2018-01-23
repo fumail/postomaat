@@ -104,44 +104,44 @@ class AddressCheck(ScannerPlugin):
         
     def lint(self):
         if not SQLALCHEMY_AVAILABLE:
-            print "sqlalchemy is not installed"
+            print("sqlalchemy is not installed")
             return False
         
         if not self.checkConfig():
             return False
 
         if self.config.get('ca_default', 'server').startswith('mx:') and not HAVE_DNS:
-            print "no DNS resolver library available - required for mx resolution"
+            print("no DNS resolver library available - required for mx resolution")
             return False
         elif not HAVE_DNS:
-            print "no DNS resolver library available - some functionality will not be available"
+            print("no DNS resolver library available - some functionality will not be available")
         
         if self.config.get(self.section, 'cache_storage') == 'redis' and not HAVE_REDIS:
-            print 'redis backend configured but redis python module not available'
+            print('redis backend configured but redis python module not available')
             return False
         
         self._init_cache(self.config)
         
         try:
             poscount, negcount = self.cache.get_total_counts()
-            print "Addresscache: %s positive entries, %s negative entries"%(poscount,negcount)
+            print("Addresscache: %s positive entries, %s negative entries"%(poscount,negcount))
         except Exception as e:
-            print "DB Connection failed: %s"%str(e)
+            print("DB Connection failed: %s"%str(e))
             return False
         
         test = SMTPTest(self.config)
         try:
             timeout = float(test.get_domain_config('lint', 'timeout'))
-            #print 'Using default config timeout: %ss' % timeout
+            #print('Using default config timeout: %ss' % timeout)
         except Exception:
-            print 'Could not get timeout value from config, using internal default of 10s'
+            print('Could not get timeout value from config, using internal default of 10s')
             
         try:
             dbconnection = self.config.get(self.section, 'dbconnection')
             conn=get_session(dbconnection)
             conn.execute("SELECT 1")
         except Exception as e:
-            print "Failed to connect to SQL database: %s" % str(e)
+            print("Failed to connect to SQL database: %s" % str(e))
             
         return True
     
@@ -1067,8 +1067,8 @@ class SMTPTestCommandLineInterface(object):
         self._init_cache(config)
         poscount, negcount, blcount = self.cache.cleanup()
         if 'verbose' in args:
-            print "Removed %s positive,%s negative records from history data"%(poscount,negcount)
-            print "Removed %s expired relays from call-ahead blacklist"%blcount
+            print("Removed %s positive,%s negative records from history data"%(poscount,negcount))
+            print("Removed %s expired relays from call-ahead blacklist"%blcount)
     
     
     
@@ -1083,9 +1083,9 @@ class SMTPTestCommandLineInterface(object):
         config.read('../../../conf/conf.d/call-ahead.conf.dist')
         self._init_cache(config)
         plugin=AddressCheck(config)
-        print "cli : Command line interface class"
-        print "sqlcache : SQL cache backend"
-        print "plugin: AddressCheck Plugin"
+        print("cli : Command line interface class")
+        print("sqlcache : SQL cache backend")
+        print("plugin: AddressCheck Plugin")
         terp=code.InteractiveConsole(locals())
         terp.interact("")
     
@@ -1093,10 +1093,10 @@ class SMTPTestCommandLineInterface(object):
     
     def help(self,*args):
         myself=sys.argv[0]
-        print "usage:"
-        print "%s <command> [args]"%myself
-        print ""
-        print "Available commands:"
+        print("usage:")
+        print("%s <command> [args]"%myself)
+        print("")
+        print("Available commands:")
         commands=[
             ("test-dry","<server> <emailaddress> [<emailaddress>] [<emailaddress>]","test recipients on target server using the null-sender, does not use any config or caching data"),
             ("test-config","<emailaddress>","test configuration using targetaddress <emailaddress>. shows relay lookup and target server information"),
@@ -1117,27 +1117,27 @@ class SMTPTestCommandLineInterface(object):
         fc=FunkyConsole()
         bold=fc.MODE['bold']
         cyan=fc.FG['cyan']
-        print "%s %s\t%s"%(fc.strcolor(command, [bold,]),fc.strcolor(args,[cyan,]),description)
+        print("%s %s\t%s"%(fc.strcolor(command, [bold,]),fc.strcolor(args,[cyan,]),description))
         
         
     def performcommand(self):
         args=sys.argv
         if len(args)<2:
-            print "no command given."
+            print("no command given.")
             self.help()
             sys.exit(1)
             
         cmd=args[1]
         cmdargs=args[2:]
         if cmd not in self.commandlist:
-            print "command '%s' not implemented. try ./call-ahead help"%cmd
+            print("command '%s' not implemented. try ./call-ahead help"%cmd)
             sys.exit(1)
         
         self.commandlist[cmd](*cmdargs)
         
     def test_dry(self,*args):
         if len(args)<2:
-            print "usage: test-dry <server> <address> [...<address>]"
+            print("usage: test-dry <server> <address> [...<address>]")
             sys.exit(1)
         server=args[0]
         addrs=args[1:]
@@ -1154,17 +1154,17 @@ class SMTPTestCommandLineInterface(object):
                 timeout = 10
             use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
         except IOError as e:
-            print str(e)
+            print(str(e))
             timeout = 10
             use_tls=1
         
         result=test.smtptest(server,addrs,timeout=timeout, use_tls=use_tls)
-        print result
+        print(result)
         
     def test_config(self,*args):
         logging.basicConfig(level=logging.INFO)
         if len(args)!=1:
-            print "usage: test-config <address>"
+            print("usage: test-config <address>")
             sys.exit(1)
         address=args[0]
         
@@ -1173,7 +1173,7 @@ class SMTPTestCommandLineInterface(object):
         config=get_config()
         domainconfig=MySQLConfigBackend(config).get_domain_config_all(domain)
         
-        print "Checking address cache..."
+        print("Checking address cache...")
         self._init_cache(config)
         entry=self.cache.get_address(address)
         if entry is not None:
@@ -1181,24 +1181,24 @@ class SMTPTestCommandLineInterface(object):
             tp="negative"
             if positive:
                 tp="positive"
-            print "We have %s cache entry for %s: %s"%(tp,address,message)
+            print("We have %s cache entry for %s: %s"%(tp,address,message))
         else:
-            print "No cache entry for %s"%address
+            print("No cache entry for %s"%address)
         
         test=SMTPTest(config)
         relays=test.get_relays(domain,domainconfig) # type: list
         if relays is None:
-                print "No relay for domain %s found!"%domain
+                print("No relay for domain %s found!"%domain)
                 sys.exit(1)
-        print "Relays for domain %s are %s"%(domain,relays)
+        print("Relays for domain %s are %s"%(domain,relays))
         for relay in relays:
-            print "Testing relay %s"%relay
+            print("Testing relay %s"%relay)
             if self.cache.is_blacklisted(domain, relay):
-                print "%s is currently blacklisted for call-aheads"%relay
+                print("%s is currently blacklisted for call-aheads"%relay)
             else:
-                print "%s not blacklisted for call-aheads"%relay
+                print("%s not blacklisted for call-aheads"%relay)
             
-            print "Checking if server supports verification...."
+            print("Checking if server supports verification....")
             
             sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':''})
             testaddress=test.maketestaddress(domain)
@@ -1209,25 +1209,25 @@ class SMTPTestCommandLineInterface(object):
             use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
             result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout, use_tls=use_tls)
             if result.state!=SMTPTestResult.TEST_OK:
-                print "There was a problem testing this server:"
-                print result
+                print("There was a problem testing this server:")
+                print(result)
                 continue
                 
             
             addrstate,code,msg=result.rcptoreplies[testaddress]
             if addrstate==SMTPTestResult.ADDRESS_OK:
-                print "Server accepts any recipient"
+                print("Server accepts any recipient")
             elif addrstate==SMTPTestResult.ADDRESS_TEMPFAIL:
-                print "Temporary problem / greylisting detected"
+                print("Temporary problem / greylisting detected")
             elif addrstate==SMTPTestResult.ADDRESS_DOES_NOT_EXIST:
-                print "Server supports recipient verification"
+                print("Server supports recipient verification")
             
-            print result
+            print(result)
     
     
     def put_address(self,*args):
         if len(args)<4:
-            print "usage: put-address <emailaddress> <positive|negative> <ttl> <message>"
+            print("usage: put-address <emailaddress> <positive|negative> <ttl> <message>")
             sys.exit(1)
             
         address=args[0]
@@ -1242,7 +1242,7 @@ class SMTPTestCommandLineInterface(object):
         try:
             ttl = int(args[2])
         except (ValueError, TypeError):
-            print 'ttl must be an integer'
+            print('ttl must be an integer')
             sys.exit(1)
             
         message = ' '.join(args[3:])
@@ -1255,17 +1255,17 @@ class SMTPTestCommandLineInterface(object):
     
     def wipe_address(self,*args):
         if len(args)!=1:
-            print "usage: wipe-address <address>"
+            print("usage: wipe-address <address>")
             sys.exit(1)
         config=get_config()
         self._init_cache(config)
         rowcount = self.cache.wipe_address(args[0])
-        print "Wiped %s records"%rowcount
+        print("Wiped %s records"%rowcount)
     
     
     def wipe_domain(self,*args):
         if len(args)<1:
-            print "usage: wipe-domain <domain> [positive|negative|all (default)]"
+            print("usage: wipe-domain <domain> [positive|negative|all (default)]")
             sys.exit(1)
         
         domain=args[0]
@@ -1286,62 +1286,62 @@ class SMTPTestCommandLineInterface(object):
         config=get_config()
         self._init_cache(config)
         rowcount = self.cache.wipe_domain(domain,pos)
-        print "Wiped %s %s records"%(rowcount,strpos)       
+        print("Wiped %s %s records"%(rowcount,strpos)       )
     
     
     
     def show_domain(self,*args):
         if len(args)!=1:
-            print "usage: show-domain <domain>"
+            print("usage: show-domain <domain>")
             sys.exit(1)
         config=get_config()
         self._init_cache(config)
         domain=args[0]
         rows = self.cache.get_all_addresses(domain) # type: list
         
-        print "Cache for domain %s (-: negative entry, +: positive entry)"%domain
+        print("Cache for domain %s (-: negative entry, +: positive entry)"%domain)
         for row in rows:
             email,positive=row
             if positive:
-                print "+ ",email
+                print("+ ",email)
             else:
-                print "- ",email
+                print("- ",email)
         total=len(rows)
-        print "Total %s cache entries for domain %s"%(total,domain)
+        print("Total %s cache entries for domain %s"%(total,domain))
     
     
     def show_blacklist(self,*args):
         if len(args)>0:
-            print "usage: show-blackist"
+            print("usage: show-blackist")
             sys.exit(1)
         config=get_config()
         self._init_cache(config)
         rows = self.cache.get_blacklist() # type: list
         
-        print "Call-ahead blacklist (domain/relay/reason/expiry):"
+        print("Call-ahead blacklist (domain/relay/reason/expiry):")
         for row in rows:
             domain,relay,reason,exp=row
-            print "%s\t%s\t%s\t%s"%(domain,relay,reason,exp)
+            print("%s\t%s\t%s\t%s"%(domain,relay,reason,exp))
             
         total=len(rows)
-        print "Total %s blacklisted relays"%total
+        print("Total %s blacklisted relays"%total)
     
     
     def unblacklist(self,*args):
         if len(args)<1:
-            print "usage: unblacklist <relay or domain>"
+            print("usage: unblacklist <relay or domain>")
             sys.exit(1)
         relay=args[0]
         config=get_config()
         self._init_cache(config)
         count = self.cache.unblacklist(relay)
-        print "%s entries removed from call-ahead blacklist"%count
+        print("%s entries removed from call-ahead blacklist"%count)
     
     
     def update(self,*args):
         logging.basicConfig(level=logging.INFO)
         if len(args)!=1:
-            print "usage: update <address>"
+            print("usage: update <address>")
             sys.exit(1)
         address=args[0]
         
@@ -1354,9 +1354,9 @@ class SMTPTestCommandLineInterface(object):
         test=SMTPTest(config)
         relays=test.get_relays(domain,domainconfig)
         if relays is None:
-            print "No relay for domain %s found!"%domain
+            print("No relay for domain %s found!"%domain)
             sys.exit(1)
-        print "Relays for domain %s are %s"%(domain,relays)
+        print("Relays for domain %s are %s"%(domain,relays))
         
         relay=relays[0]
         sender=test.get_domain_config(domain, 'sender', domainconfig, {'bounce':'','originalfrom':''})
@@ -1370,9 +1370,9 @@ class SMTPTestCommandLineInterface(object):
         
         servercachetime=test.get_domain_config(domain, 'test_server_interval', domainconfig)
         if result.state!=SMTPTestResult.TEST_OK:
-            print "There was a problem testing this server:"
-            print result
-            print "putting server on blacklist"
+            print("There was a problem testing this server:")
+            print(result)
+            print("putting server on blacklist")
             self.cache.blacklist(domain, relay, servercachetime, result.stage, result.errormessage)
             return DUNNO,None
     
@@ -1389,7 +1389,7 @@ class SMTPTestCommandLineInterface(object):
         if recverificationsupport:
             
             if self.cache.is_blacklisted(domain, relay):
-                print "Server was blacklisted - removing from blacklist"
+                print("Server was blacklisted - removing from blacklist")
                 self.cache.unblacklist(relay)
                 self.cache.unblacklist(domain)
             
@@ -1404,14 +1404,14 @@ class SMTPTestCommandLineInterface(object):
             neg=""
             if not positive:
                 neg="negative"
-            print "%s cached %s for %s seconds"%(neg,address,cachetime)
+            print("%s cached %s for %s seconds"%(neg,address,cachetime))
         else:
-            print "Server accepts any recipient"
+            print("Server accepts any recipient")
             if config.getboolean('AddressCheck','always_assume_rec_verification_support'):
-                print "blacklistings disabled in config- not blacklisting"
+                print("blacklistings disabled in config- not blacklisting")
             else:
                 self.cache.blacklist(domain, relay, servercachetime, result.stage, 'accepts any recipient')
-                print "Server blacklisted"
+                print("Server blacklisted")
             
         
 if __name__=='__main__':

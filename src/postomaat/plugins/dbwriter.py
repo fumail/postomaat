@@ -51,7 +51,7 @@ class DBWriter(ScannerPlugin):
     
     def lint(self):
         if not SQLALCHEMY_AVAILABLE:
-            print "sqlalchemy is not installed"
+            print("sqlalchemy is not installed")
             return False
         
         
@@ -66,14 +66,14 @@ class DBWriter(ScannerPlugin):
         try:
             conn=get_session(self.config.get(self.section,'dbconnection'))
         except Exception as e:
-            print "DB Connection failed. Reason: %s"%(str(e))
+            print("DB Connection failed. Reason: %s"%(str(e)))
             return False
         
         sql_query="SELECT %s FROM %s LIMIT 0,1"%(dbcolumns,tablename)
         try:
             conn.execute(sql_query)
         except Exception as e:
-            print "Table or field configuration error: %s"%str(e)
+            print("Table or field configuration error: %s"%str(e))
             return False
         return True
               

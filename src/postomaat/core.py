@@ -18,11 +18,13 @@
 import logging
 import sys
 import os
-import thread
 import socket
 import time
 import traceback
-import ConfigParser
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 import re
 import inspect
 from postomaat.shared import Suspect
@@ -34,6 +36,13 @@ import postomaat.procpool
 import multiprocessing
 import multiprocessing.reduction
 import code
+
+from multiprocessing.reduction import ForkingPickler
+try:
+   from StringIO import StringIO
+except:
+   # Python 3
+   from io import BytesIO as StringIO
 
 
 HOSTNAME=socket.gethostname()
@@ -208,8 +217,9 @@ class MainController(object):
                 port=int(portconfig.strip())
             
             server=PolicyServer(self,port=port,address=self.config.get('main', 'bindaddress'),plugins=plugins)
-            
-            thread.start_new_thread(server.serve, ())
+            tr = threading.Thread(target=server.serve, args=())
+            tr.daemon = True
+            tr.start()
             self.servers.append(server)
         self.logger.info('Startup complete')
         if self.debugconsole:
@@ -226,12 +236,12 @@ class MainController(object):
         # http://stackoverflow.com/questions/15760712/python-readline-module-prints-escape-character-during-import
         import readline
 
-        print "Interactive Console started"
-        print ""
-        print "pre-defined locals:"
+        print("Interactive Console started")
+        print("")
+        print("pre-defined locals:")
 
         mc = self
-        print "mc : maincontroller"
+        print("mc : maincontroller")
 
         terp = code.InteractiveConsole(locals())
         terp.interact("")
@@ -337,36 +347,36 @@ class MainController(object):
         from postomaat.funkyconsole import FunkyConsole
         fc=FunkyConsole()
         self._lint_dependencies(fc)
-        print fc.strcolor('Loading plugins...','magenta')
+        print(fc.strcolor('Loading plugins...','magenta'))
         if not self.load_plugins():
-            print fc.strcolor('At least one plugin failed to load','red')
-        print fc.strcolor('Plugin loading complete','magenta')
+            print(fc.strcolor('At least one plugin failed to load','red'))
+        print(fc.strcolor('Plugin loading complete','magenta'))
         
-        print "Linting ",fc.strcolor("main configuration",'cyan')
+        print("Linting ",fc.strcolor("main configuration",'cyan'))
         if not self.checkConfig():
-            print fc.strcolor("ERROR","red")
+            print(fc.strcolor("ERROR","red"))
         else:
-            print fc.strcolor("OK","green")
+            print(fc.strcolor("OK","green"))
     
         
         
         allplugins=self.plugins
         
         for plugin in allplugins:
-            print
-            print "Linting Plugin ",fc.strcolor(str(plugin),'cyan'),'Config section:',fc.strcolor(str(plugin.section),'cyan')
+            print("")
+            print("Linting Plugin ",fc.strcolor(str(plugin),'cyan'),'Config section:',fc.strcolor(str(plugin.section),'cyan'))
             try:
                 result=plugin.lint()
             except Exception as e:
-                print "ERROR: %s"%e
+                print("ERROR: %s"%e)
                 result=False
             
             if result:
-                print fc.strcolor("OK","green")
+                print(fc.strcolor("OK","green"))
             else:
                 errors=errors+1
-                print fc.strcolor("ERROR","red")
-        print "%s plugins reported errors."%errors
+                print(fc.strcolor("ERROR","red"))
+        print("%s plugins reported errors."%errors)
         
         
     
@@ -375,21 +385,21 @@ class MainController(object):
         Fill missing values with defaults if possible
         """
         allOK=True
-        for config,infodic in self.requiredvars.iteritems():
+        for config,infodic in iter(self.requiredvars.items()):
             section=infodic['section']
             try:
                 var=self.config.get(section,config)
     
                 if 'validator' in infodic:
                     if not infodic["validator"](var):
-                        print "Validation failed for [%s] :: %s"%(section,config)
+                        print("Validation failed for [%s] :: %s"%(section,config))
                         allOK=False
                 
             except ConfigParser.NoSectionError:
-                print "Missing configuration section [%s] :: %s"%(section,config)
+                print("Missing configuration section [%s] :: %s"%(section,config))
                 allOK=False
             except ConfigParser.NoOptionError:
-                print "Missing configuration value [%s] :: %s"%(section,config)
+                print("Missing configuration value [%s] :: %s"%(section,config))
                 allOK=False
         return allOK
 
@@ -473,12 +483,12 @@ class MainController(object):
             if 'section' in inspect.getargspec(mod.__init__)[0]:
                 plugininstance=mod(self.config,section=configsection)
             else:
-                raise Exception,'Cannot set Config Section %s : Plugin %s does not support config override'%(configsection,mod)
+                raise Exception('Cannot set Config Section %s : Plugin %s does not support config override'%(configsection,mod))
         return plugininstance
     
     def propagate_defaults(self,requiredvars,config,defaultsection=None):
         """propagate defaults from requiredvars if they are missing in config"""
-        for option,infodic in requiredvars.iteritems():
+        for option,infodic in iter(requiredvars.items()):
             if 'section' in infodic:
                 section=infodic['section']
             else:
@@ -555,11 +565,17 @@ class PolicyServer(object):
                     # a pickled version of the socket (this is no longer required in python 3.4, but in python 2 the multiprocessing queue can not handle sockets
                     # see https://stackoverflow.com/questions/36370724/python-passing-a-tcp-socket-object-to-a-multiprocessing-queue
 
-                    rebuild_socket, reducedSocket = multiprocessing.reduction.reduce_socket(sock)
-                    procpool.add_task(reducedSocket)
+                    task = forking_dumps(sock)
+                    procpool.add_task(task)
+
 
                 else:
                     engine.handlesession()
             except Exception as e:
-                self.logger.error('Exception in serve(): %s'%str(e))
+                self.logger.exception(e)
 
+def forking_dumps(obj):
+    """ Pickle a socket This is required to pass the socket in multiprocessing"""
+    buf = StringIO()
+    ForkingPickler(buf).dump(obj)
+    return buf.getvalue()

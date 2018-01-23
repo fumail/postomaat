@@ -143,7 +143,7 @@ def apply_template(templatecontent,suspect,values=None,valuesfunction=None):
         values=valuesfunction(values)
     else:
         #replace None with empty string
-        for k,v in values.iteritems():
+        for k,v in iter(values.items()):
             if v is None:
                 values[k]=''
     
@@ -190,7 +190,7 @@ class Suspect(object):
 
     def get_value(self,key):
         """returns one of the postfix supplied values"""
-        if not self.values.has_key(key):
+        if not key in self.values:
             return None
         return self.values[key] 
     
@@ -204,7 +204,7 @@ class Suspect(object):
           
     def get_tag(self,key):
         """returns the tag value"""
-        if not self.tags.has_key(key):
+        if not key in self.tags:
             return None
         return self.tags[key]
 
@@ -363,7 +363,7 @@ def extract_domain(address, lowercase=True):
                 domain = domain.lower()
             return domain                                      
         except Exception as e:
-            raise ValueError,"invalid email address: '%s'"%address
+            raise ValueError("invalid email address: '%s'"%address)
 
 class ScannerPlugin(BasicPlugin):
     """Scanner Plugin Base Class"""
