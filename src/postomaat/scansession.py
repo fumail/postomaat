@@ -133,12 +133,18 @@ class PolicydSession(object):
         self.closeconn()
 
     def closeconn(self):
-        # IMPORTANT: Shutdown the socket explicitly
-        #            before closing, otherwise the next
-        #            incoming connection in PolicyServer
-        #            might time-out in the socket.accept()
-        #            statement
-        self.socket.shutdown(socket.SHUT_RDWR)
+        if sys.version_info > (3,)
+            # IMPORTANT: Python 3
+            #            Shutdown the socket explicitly
+            #            before closing, otherwise the next
+            #            incoming connection in PolicyServer
+            #            might time-out in the socket.accept()
+            #            statement
+            #            -> seems to create problems for python 2.7.9
+            #               whereas it works with 2.7.5 where both versions
+            #               seem to work
+            #            -> decision: use only for python > 3
+            self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
     def getrequest(self):
