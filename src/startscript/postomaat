@@ -194,7 +194,7 @@ if lint or debugmsg:
     logging.basicConfig(level=level)
     
     fc=postomaat.funkyconsole.FunkyConsole()
-    print(fc.strcolor("postomaat", "yellow")+", ")
+    print(fc.strcolor("postomaat", "yellow"))
     print(fc.strcolor(POSTOMAAT_VERSION, "green"))
 
     # check if directory used by logfile exists
