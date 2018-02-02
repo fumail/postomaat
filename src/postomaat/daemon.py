@@ -1,4 +1,4 @@
-#   Copyright 2009-2017 Oli Schacher
+#   Copyright 2009-2018 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -89,6 +89,21 @@ class DaemonStuff(object):
         os.write(pidfd, ("%s\n" % pid).encode())  # important: encode the string into a byte stream for python 3
         os.close(pidfd)
         return 0
+
+
+    def check_privs(self, username='nobody', groupname='nobody'):
+        errors = []
+        running_uid = running_gid = None
+        try:
+            running_uid = pwd.getpwnam(username).pw_uid
+        except Exception:
+            errors.extend('No such user: %s' % username)
+        try:
+            running_gid = grp.getgrnam(groupname).gr_gid
+        except Exception:
+            errors.extend('No such group: %s' % groupname)
+
+        return running_uid, running_gid, errors
 
 
     def drop_privs(self, username='nobody', groupname='nobody', keep_supplemental_groups=True):

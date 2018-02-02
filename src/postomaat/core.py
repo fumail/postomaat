@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#   Copyright 2013 Oli Schacher
+#   Copyright 2013 - 2018 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,6 @@ import os
 import socket
 import time
 import traceback
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
 import re
 import inspect
 from postomaat.shared import Suspect
@@ -39,10 +35,12 @@ import code
 
 from multiprocessing.reduction import ForkingPickler
 try:
-   from StringIO import StringIO
+    import ConfigParser
+    from StringIO import StringIO
 except ImportError:
-   # Python 3
-   from io import BytesIO as StringIO
+    # Python 3
+    import configparser as ConfigParser
+    from io import BytesIO as StringIO
 
 
 HOSTNAME=socket.gethostname()
@@ -171,7 +169,7 @@ class MainController(object):
         try:
             minthreads = self.config.getint('performance', 'minthreads')
             maxthreads = self.config.getint('performance', 'maxthreads')
-        except configparser.NoSectionError:
+        except ConfigParser.NoSectionError:
             self.logger.warning(
                 'Performance section not configured, using default thread numbers')
             minthreads = 1
@@ -275,7 +273,9 @@ class MainController(object):
             
             if not alreadyRunning:
                 server=PolicyServer(self,port=port,address=self.config.get('main', 'bindaddress'))
-                thread.start_new_thread(server.serve, ())
+                tr = threading.Thread(target=server.serve, args=())
+                tr.daemon = True
+                tr.start()
                 self.servers.append(server)
         
         servercopy=self.servers[:] 
@@ -352,19 +352,18 @@ class MainController(object):
             print(fc.strcolor('At least one plugin failed to load','red'))
         print(fc.strcolor('Plugin loading complete','magenta'))
         
-        print("Linting ",fc.strcolor("main configuration",'cyan'))
+        print("Linting %s" % fc.strcolor("main configuration",'cyan'))
         if not self.checkConfig():
             print(fc.strcolor("ERROR","red"))
         else:
             print(fc.strcolor("OK","green"))
-    
-        
         
         allplugins=self.plugins
         
         for plugin in allplugins:
             print("")
-            print("Linting Plugin ",fc.strcolor(str(plugin),'cyan'),'Config section:',fc.strcolor(str(plugin.section),'cyan'))
+            print("Linting Plugin %s Config section: %s" %
+                  (fc.strcolor(str(plugin),'cyan'), fc.strcolor(str(plugin.section),'cyan')))
             try:
                 result=plugin.lint()
             except Exception as e:
