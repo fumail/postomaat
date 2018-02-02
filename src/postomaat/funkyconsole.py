@@ -1,4 +1,4 @@
-#   Copyright 2009-2017 Oli Schacher
+#   Copyright 2009-2018 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ class FunkyConsole:
         """builds escape sequences"""
         escseq = "\x1b["
         for cmd in commandlist:
-            if cmd != None:
+            if cmd is not None:
                 escseq = escseq + cmd + ";"
         escseq = escseq[0:-1]  # strip last ;
         escseq = escseq + "m"
