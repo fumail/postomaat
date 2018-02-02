@@ -352,7 +352,7 @@ class MainController(object):
             print(fc.strcolor('At least one plugin failed to load','red'))
         print(fc.strcolor('Plugin loading complete','magenta'))
         
-        print("Linting ",fc.strcolor("main configuration",'cyan'))
+        print("Linting  "+fc.strcolor("main configuration",'cyan'))
         if not self.checkConfig():
             print(fc.strcolor("ERROR","red"))
         else:
@@ -364,7 +364,7 @@ class MainController(object):
         
         for plugin in allplugins:
             print("")
-            print("Linting Plugin ",fc.strcolor(str(plugin),'cyan'),'Config section:',fc.strcolor(str(plugin.section),'cyan'))
+            print("Linting Plugin "+fc.strcolor(str(plugin),'cyan')+'Config section: '+fc.strcolor(str(plugin.section),'cyan'))
             try:
                 result=plugin.lint()
             except Exception as e:
