@@ -2,7 +2,7 @@
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, FileList, \
     string_to_actioncode, get_default_cache
-from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
+from postomaat.extensions.sql import SQL_EXTENSION_ENABLED, get_session, get_domain_setting
 import os
 
 
@@ -103,7 +103,7 @@ class EnforceTLS(ScannerPlugin):
                 if not sqlquery.lower().startswith('select '):
                     lint_ok = False
                     print('SQL statement must be a SELECT query')
-                if not SQLALCHEMY_AVAILABLE:
+                if not SQL_EXTENSION_ENABLED:
                     print('SQLAlchemy not available, cannot use sql backend')
                 if lint_ok:
                     dbconnection = self.config.get(self.section, 'dbconnection')

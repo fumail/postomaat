@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from postomaat.shared import *
-from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE,get_session
+from postomaat.extensions.sql import SQL_EXTENSION_ENABLED,get_session
 
 
 class DBWriter(ScannerPlugin):
@@ -50,7 +50,7 @@ class DBWriter(ScannerPlugin):
         return fieldmap
     
     def lint(self):
-        if not SQLALCHEMY_AVAILABLE:
+        if not SQL_EXTENSION_ENABLED:
             print("sqlalchemy is not installed")
             return False
         

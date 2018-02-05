@@ -7,7 +7,7 @@ if __name__ =='__main__':
     sys.path.append('../../')
 
 from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config, string_to_actioncode
-from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE,get_session
+from postomaat.extensions.sql import SQL_EXTENSION_ENABLED,get_session
 from postomaat.extensions.dnsquery import HAVE_DNS, lookup, mxlookup
 import smtplib
 from string import Template
@@ -103,7 +103,7 @@ class AddressCheck(ScannerPlugin):
         
         
     def lint(self):
-        if not SQLALCHEMY_AVAILABLE:
+        if not SQL_EXTENSION_ENABLED:
             print("sqlalchemy is not installed")
             return False
         
