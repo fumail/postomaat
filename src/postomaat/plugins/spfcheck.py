@@ -2,7 +2,7 @@
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, \
     FileList, string_to_actioncode, get_default_cache
-from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
+from postomaat.extensions.sql import SQL_EXTENSION_ENABLED, get_session, get_domain_setting
 import os
 try:
     import spf
@@ -82,11 +82,11 @@ class SPFPlugin(ScannerPlugin):
             dbconnection = self.config.get(self.section, 'dbconnection', '').strip()
             sqlquery = self.config.get(self.section, 'domain_sql_query')
             
-            if dbconnection!='' and SQLALCHEMY_AVAILABLE:
+            if dbconnection!='' and SQL_EXTENSION_ENABLED:
                 cache = get_default_cache()
                 do_check = get_domain_setting(from_domain, dbconnection, sqlquery, cache, self.section, False, self.logger)
                 
-            elif dbconnection!='' and not SQLALCHEMY_AVAILABLE:
+            elif dbconnection!='' and not SQL_EXTENSION_ENABLED:
                 self.logger.error('dbconnection specified but sqlalchemy not available - skipping db lookup')
                 
         return do_check
@@ -203,7 +203,7 @@ class SPFPlugin(ScannerPlugin):
         
         sqlquery = self.config.get(self.section, 'domain_sql_query')
         dbconnection = self.config.get(self.section, 'dbconnection', '').strip()
-        if not SQLALCHEMY_AVAILABLE and dbconnection != '':
+        if not SQL_EXTENSION_ENABLED and dbconnection != '':
             print('SQLAlchemy not available, cannot use SQL backend')
             lint_ok = False
         elif dbconnection == '':
