@@ -1,4 +1,4 @@
-[GeoIP]
+[GeoIPPlugin]
 # location of the MaxMind GeopIP database file
 database=/data/geoip/GeoIP.dat
 # list of countries you do not want to receive mail from.
