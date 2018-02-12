@@ -64,7 +64,8 @@ class EBLLookup(ScannerPlugin):
         
         if 'googlemail' in domainparts: # replace googlemail with gmail
             tld = domainparts.split('.', 1)
-            domainparts = 'gmail.%s' % tld
+            domain = 'gmail.%s' % tld
+            domainparts = ['gmail', tld]
         
         if '+' in lhs: # strip all + tags
             lhs = lhs.split('+')[0]
