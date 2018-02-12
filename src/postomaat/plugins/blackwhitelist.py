@@ -3,7 +3,7 @@
 __version__ = "0.0.1"
 
 from postomaat.shared import ScannerPlugin, OK, DUNNO, REJECT, DISCARD, DEFER_IF_PERMIT, strip_address, extract_domain, get_default_cache
-from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE,get_session
+from postomaat.extensions.sql import SQL_EXTENSION_ENABLED, get_session
 import fnmatch
 
 
@@ -18,7 +18,7 @@ LISTING_TYPES = (dict(name='whitelist_to', cmp=['to_address']),
 
 
 
-if SQLALCHEMY_AVAILABLE:
+if SQL_EXTENSION_ENABLED:
     from sqlalchemy import Column
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.types import Unicode, Integer
@@ -181,7 +181,7 @@ class BlackWhiteList(ScannerPlugin):
         
         
     def examine(self,suspect):
-        if not SQLALCHEMY_AVAILABLE:
+        if not SQL_EXTENSION_ENABLED:
             return DUNNO
         
         from_address=suspect.get_value('sender')
@@ -239,7 +239,7 @@ class BlackWhiteList(ScannerPlugin):
         
     def lint(self):
         status = True
-        if not SQLALCHEMY_AVAILABLE:
+        if not SQL_EXTENSION_ENABLED:
             print("sqlalchemy is not installed")
             status = False
             
