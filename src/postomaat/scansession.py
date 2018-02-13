@@ -133,7 +133,7 @@ class PolicydSession(object):
         self.closeconn()
 
     def closeconn(self):
-        if sys.version_info > (3,)
+        if sys.version_info > (3,):
             # IMPORTANT: Python 3
             #            Shutdown the socket explicitly
             #            before closing, otherwise the next
