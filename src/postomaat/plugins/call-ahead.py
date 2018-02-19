@@ -8,7 +8,7 @@ if __name__ =='__main__':
 
 from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config, string_to_actioncode
 from postomaat.extensions.sql import SQL_EXTENSION_ENABLED,get_session
-from postomaat.extensions.dnsquery import HAVE_DNS, lookup, mxlookup
+from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup, mxlookup
 import smtplib
 from string import Template
 import logging
