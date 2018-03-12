@@ -116,7 +116,7 @@ class EBLLookup(ScannerPlugin):
     
     
     def examine(self, suspect):
-        if not HAVE_DNS:
+        if not DNSQUERY_EXTENSION_ENABLED:
             return DUNNO
         
         from_address=suspect.get_value('sender')
@@ -155,7 +155,7 @@ class EBLLookup(ScannerPlugin):
             print('Error checking config')
             lint_ok = False
             
-        if not HAVE_DNS:
+        if not DNSQUERY_EXTENSION_ENABLED:
             print("no DNS resolver library available - this plugin will do nothing")
             lint_ok = False
             
