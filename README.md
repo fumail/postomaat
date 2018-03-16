@@ -3,7 +3,7 @@ postomaat
 
 A policy daemon for postfix written in python
 
-This is a  by-product of the [Fuglu](https://github.com/gryphius/fuglu) mailfilter.
+This is a  by-product of the [Fuglu](https://github.com/fumail/fuglu) mailfilter.
 While fuglu focuses on scanning a full message (pre- or after-queue), postomaat only uses the message
 fields available in the  [Postfix policy access delegation protocol](http://www.postfix.org/SMTPD_POLICY_README.html)
 It can therefore make decisions much faster than fuglu, but only based on envelope data (sender adress, recipient adress, client ip etc).
