@@ -206,10 +206,19 @@ class EBLLookup(ScannerPlugin):
             print("no DNS resolver library available - this plugin will do nothing")
             lint_ok = False
             
+        if self.config.getboolean(self.section,'decode_srs') and not HAVE_SRS:
+            print('decode_srs enabled but SRS library is not available')
+            lint_ok = False
+            
         hashtype = self.config.get(self.section,'hash').lower()
         if hashtype not in ['sha1', 'md5']:
             lint_ok = False
             print('unsupported hash type %s' % hashtype)
+            
+        normalisation = self.config.get(self.section,'normalisation')
+        if normalisation not in ['ebl', 'low']:
+            lint_ok = False
+            print('unsupported normalsation type %s' % normalisation)
         
         addr_hash = self._create_hash('noemail@example.com')
         listed, message = self._ebl_lookup(addr_hash)
