@@ -33,6 +33,10 @@ class EBLLookup(ScannerPlugin):
             },
             'messagetemplate':{
                 'default':'${sender} listed by ${dnszone} for ${message}'
+            },
+            'normalisation':{
+                'default':'ebl',
+                'description':'type of normalisation to be applied to email addresses before hashing. choose one of ebl (full normalisation according to ebl.msbl.org standard), low (lowercase only)'
             }
         }
 
@@ -52,7 +56,7 @@ class EBLLookup(ScannerPlugin):
         
         
         
-    def _email_normalise(self, address):
+    def _email_normalise_ebl(self, address):
         if not '@' in address:
             self.logger.error('Not an email address: %s' % address)
             return address
@@ -79,6 +83,22 @@ class EBLLookup(ScannerPlugin):
         lhs = re.sub('^(envelope-from|id|r|receiver)=', '', lhs) # strip mail log prefixes
             
         return '%s@%s' % (lhs, domain)
+    
+    
+    
+    def _email_normalise_low(self, address):
+        address = address.lower()
+        return address
+    
+    
+    
+    def _email_normalise(self, address):
+        n = self.config.get(self.section,'normalisation')
+        if n == 'ebl':
+            address = self._email_normalise_ebl(address)
+        elif n == 'low':
+            address = self._email_normalise_low(address)
+        return address
     
     
     
