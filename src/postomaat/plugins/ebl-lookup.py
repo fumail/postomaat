@@ -4,6 +4,21 @@ from postomaat.shared import ScannerPlugin, DEFER_IF_PERMIT, DUNNO, REJECT, stri
 from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup
 import re
 from hashlib import sha1, md5
+try:
+    import SRS
+    HAVE_SRS=True
+    class SRSDecode(SRS.Shortcut.Shortcut):
+        def parse(self, user, srshost=None):
+            user, m = self.srs0re.subn('', user, 1)
+            assert m, "Reverse address does not match %s." % self.srs0re.pattern
+            hash, timestamp, sendhost, senduser = user.split(SRS.SRSSEP, 3)[-4:]
+            if not sendhost and srshost:
+                sendhost = srshost
+            return sendhost, senduser
+except ImportError:
+    SRS=None
+    HAVE_SRS=False
+    SRSDecode = None
 
 
 
@@ -37,7 +52,11 @@ class EBLLookup(ScannerPlugin):
             'normalisation':{
                 'default':'ebl',
                 'description':'type of normalisation to be applied to email addresses before hashing. choose one of ebl (full normalisation according to ebl.msbl.org standard), low (lowercase only)'
-            }
+            },
+            'decode_srs':{
+                'default':'0',
+                'description':'decode SRS encoded sender addresses before lookup'
+            },
         }
 
 
@@ -135,6 +154,12 @@ class EBLLookup(ScannerPlugin):
     
     
     
+    def _decode_srs(self, addr):
+        srs = SRSDecode()
+        return srs.reverse(addr)
+    
+    
+    
     def examine(self, suspect):
         if not DNSQUERY_EXTENSION_ENABLED:
             return DUNNO
@@ -145,8 +170,10 @@ class EBLLookup(ScannerPlugin):
             return DEFER_IF_PERMIT,'internal policy error (no from address)'
         
         from_address=strip_address(from_address)
+        if HAVE_SRS and self.config.getboolean(self.section,'decode_srs'):
+            from_address = self._decode_srs(from_address)
+
         from_domain=extract_domain(from_address)
-        
         if self._is_whitelisted(from_domain):
             return DUNNO
         
