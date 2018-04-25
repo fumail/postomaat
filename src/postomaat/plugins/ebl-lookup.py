@@ -57,6 +57,10 @@ class EBLLookup(ScannerPlugin):
                 'default':'0',
                 'description':'decode SRS encoded sender addresses before lookup'
             },
+            'check_srs_only':{
+                'default':'0',
+                'description':'only check decoded SRS sender addresses against the blacklist zone'
+            },
         }
 
 
@@ -154,6 +158,13 @@ class EBLLookup(ScannerPlugin):
     
     
     
+    def _is_srs(self, addr):
+        if addr.startswith('SRS0=') or addr.startswith('SRS1='):
+            return True
+        return False
+    
+    
+    
     def _decode_srs(self, addr):
         srs = SRSDecode()
         return srs.reverse(addr)
@@ -170,6 +181,10 @@ class EBLLookup(ScannerPlugin):
             return DEFER_IF_PERMIT,'internal policy error (no from address)'
         
         from_address=strip_address(from_address)
+        if self.config.getboolean(self.section,'check_srs_only') and not self._is_srs(from_address):
+            self.logger.info('skipping non SRS address %s' % from_address)
+            return DUNNO
+        
         if HAVE_SRS and self.config.getboolean(self.section,'decode_srs'):
             from_address = self._decode_srs(from_address)
 
