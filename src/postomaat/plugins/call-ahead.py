@@ -126,10 +126,10 @@ class AddressCheck(ScannerPlugin):
         if not self.checkConfig():
             return False
 
-        if self.config.get('ca_default', 'server').startswith('mx:') and not HAVE_DNS:
+        if self.config.get('ca_default', 'server').startswith('mx:') and not DNSQUERY_EXTENSION_ENABLED:
             print("no DNS resolver library available - required for mx resolution")
             return False
-        elif not HAVE_DNS:
+        elif not DNSQUERY_EXTENSION_ENABLED:
             print("no DNS resolver library available - some functionality will not be available")
         
         if self.config.get(self.section, 'cache_storage') == 'redis' and not HAVE_REDIS:
@@ -486,7 +486,7 @@ class SMTPTest(object):
             mailfrom=""
             
         result.stage=SMTPTestResult.STAGE_RESOLVE
-        if HAVE_DNS and not self.is_ip(relay):
+        if DNSQUERY_EXTENSION_ENABLED and not self.is_ip(relay):
             arecs = lookup(relay)
             if arecs is not None and len(arecs)==0:
                 result.state=SMTPTestResult.TEST_FAILED
