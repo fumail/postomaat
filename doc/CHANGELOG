@@ -1,0 +1,19 @@
+-- Postomaat 0.7.0, 2018-04-26
+ * First official release in years and first to bring a changelog file
+ * Added Apache-2.0 licence information
+ * Many backported features and bugfixes from Fuglu, such as
+  * Multiprocessing
+  * Python 3 support
+ * Many new plugins, such as
+  * Generic Black/Whitelist based on SpamAssassin userprefs database
+  * Call-Ahead (recipient verification)
+  * Complex Rules
+  * Support for EBL blacklist http://msbl.org/ebl.html
+  * Enforce external MX by recipient domain
+  * Enforce TLS by recipient domain
+  * GeoIP lookup and block/allow servers from certain countries
+  * HELO and rDNS checks
+  * Recipient Rules
+  * Script filter (run external python script)
+  * SPF checks
+  * SRS verification

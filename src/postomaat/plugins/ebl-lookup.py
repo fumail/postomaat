@@ -1,4 +1,20 @@
 # -*- coding: UTF-8 -*-
+#   Copyright 2012-2018 Fumail Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+#
 
 from postomaat.shared import ScannerPlugin, DEFER_IF_PERMIT, DUNNO, REJECT, strip_address, extract_domain, apply_template, FileList
 from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup
@@ -11,7 +27,7 @@ try:
         def parse(self, user, srshost=None):
             user, m = self.srs0re.subn('', user, 1)
             assert m, "Reverse address does not match %s." % self.srs0re.pattern
-            hash, timestamp, sendhost, senduser = user.split(SRS.SRSSEP, 3)[-4:]
+            myhash, timestamp, sendhost, senduser = user.split(SRS.SRSSEP, 3)[-4:]
             if not sendhost and srshost:
                 sendhost = srshost
             return sendhost, senduser
@@ -233,7 +249,7 @@ class EBLLookup(ScannerPlugin):
         normalisation = self.config.get(self.section,'normalisation')
         if normalisation not in ['ebl', 'low']:
             lint_ok = False
-            print('unsupported normalsation type %s' % normalisation)
+            print('unsupported normalisation type %s' % normalisation)
         
         addr_hash = self._create_hash('noemail@example.com')
         listed, message = self._ebl_lookup(addr_hash)
