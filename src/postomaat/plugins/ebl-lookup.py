@@ -1,9 +1,40 @@
 # -*- coding: UTF-8 -*-
+#   Copyright 2012-2018 Fumail Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+#
 
 from postomaat.shared import ScannerPlugin, DEFER_IF_PERMIT, DUNNO, REJECT, strip_address, extract_domain, apply_template, FileList
-from postomaat.extensions.dnsquery import HAVE_DNS, lookup
+from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup
 import re
 from hashlib import sha1, md5
+try:
+    import SRS
+    HAVE_SRS=True
+    class SRSDecode(SRS.Shortcut.Shortcut):
+        def parse(self, user, srshost=None):
+            user, m = self.srs0re.subn('', user, 1)
+            assert m, "Reverse address does not match %s." % self.srs0re.pattern
+            myhash, timestamp, sendhost, senduser = user.split(SRS.SRSSEP, 3)[-4:]
+            if not sendhost and srshost:
+                sendhost = srshost
+            return sendhost, senduser
+except ImportError:
+    SRS=None
+    HAVE_SRS=False
+    SRSDecode = None
 
 
 
@@ -33,7 +64,19 @@ class EBLLookup(ScannerPlugin):
             },
             'messagetemplate':{
                 'default':'${sender} listed by ${dnszone} for ${message}'
-            }
+            },
+            'normalisation':{
+                'default':'ebl',
+                'description':'type of normalisation to be applied to email addresses before hashing. choose one of ebl (full normalisation according to ebl.msbl.org standard), low (lowercase only)'
+            },
+            'decode_srs':{
+                'default':'0',
+                'description':'decode SRS encoded sender addresses before lookup'
+            },
+            'check_srs_only':{
+                'default':'0',
+                'description':'only check decoded SRS sender addresses against the blacklist zone'
+            },
         }
 
 
@@ -52,7 +95,7 @@ class EBLLookup(ScannerPlugin):
         
         
         
-    def _email_normalise(self, address):
+    def _email_normalise_ebl(self, address):
         if not '@' in address:
             self.logger.error('Not an email address: %s' % address)
             return address
@@ -63,8 +106,9 @@ class EBLLookup(ScannerPlugin):
         domainparts = domain.split('.')
         
         if 'googlemail' in domainparts: # replace googlemail with gmail
-            tld = domainparts.split('.', 1)
-            domainparts = 'gmail.%s' % tld
+            tld = '.'.join(domainparts[1:])
+            domain = 'gmail.%s' % tld
+            domainparts = ['gmail', tld]
         
         if '+' in lhs: # strip all + tags
             lhs = lhs.split('+')[0]
@@ -78,6 +122,22 @@ class EBLLookup(ScannerPlugin):
         lhs = re.sub('^(envelope-from|id|r|receiver)=', '', lhs) # strip mail log prefixes
             
         return '%s@%s' % (lhs, domain)
+    
+    
+    
+    def _email_normalise_low(self, address):
+        address = address.lower()
+        return address
+    
+    
+    
+    def _email_normalise(self, address):
+        n = self.config.get(self.section,'normalisation')
+        if n == 'ebl':
+            address = self._email_normalise_ebl(address)
+        elif n == 'low':
+            address = self._email_normalise_low(address)
+        return address
     
     
     
@@ -114,8 +174,21 @@ class EBLLookup(ScannerPlugin):
     
     
     
+    def _is_srs(self, addr):
+        if addr.startswith('SRS0=') or addr.startswith('SRS1='):
+            return True
+        return False
+    
+    
+    
+    def _decode_srs(self, addr):
+        srs = SRSDecode()
+        return srs.reverse(addr)
+    
+    
+    
     def examine(self, suspect):
-        if not HAVE_DNS:
+        if not DNSQUERY_EXTENSION_ENABLED:
             return DUNNO
         
         from_address=suspect.get_value('sender')
@@ -124,8 +197,14 @@ class EBLLookup(ScannerPlugin):
             return DEFER_IF_PERMIT,'internal policy error (no from address)'
         
         from_address=strip_address(from_address)
-        from_domain=extract_domain(from_address)
+        if self.config.getboolean(self.section,'check_srs_only') and not self._is_srs(from_address):
+            self.logger.info('skipping non SRS address %s' % from_address)
+            return DUNNO
         
+        if HAVE_SRS and self.config.getboolean(self.section,'decode_srs'):
+            from_address = self._decode_srs(from_address)
+
+        from_domain=extract_domain(from_address)
         if self._is_whitelisted(from_domain):
             return DUNNO
         
@@ -154,14 +233,23 @@ class EBLLookup(ScannerPlugin):
             print('Error checking config')
             lint_ok = False
             
-        if not HAVE_DNS:
+        if not DNSQUERY_EXTENSION_ENABLED:
             print("no DNS resolver library available - this plugin will do nothing")
+            lint_ok = False
+            
+        if self.config.getboolean(self.section,'decode_srs') and not HAVE_SRS:
+            print('decode_srs enabled but SRS library is not available')
             lint_ok = False
             
         hashtype = self.config.get(self.section,'hash').lower()
         if hashtype not in ['sha1', 'md5']:
             lint_ok = False
             print('unsupported hash type %s' % hashtype)
+            
+        normalisation = self.config.get(self.section,'normalisation')
+        if normalisation not in ['ebl', 'low']:
+            lint_ok = False
+            print('unsupported normalisation type %s' % normalisation)
         
         addr_hash = self._create_hash('noemail@example.com')
         listed, message = self._ebl_lookup(addr_hash)

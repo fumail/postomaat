@@ -1,5 +1,21 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
+# -*- coding: UTF-8 -*-
+#   Copyright 2012-2018 Oli Schacher
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+#
 import sys
 
 #in case the tool is not installed system wide (development...)
@@ -7,8 +23,8 @@ if __name__ =='__main__':
     sys.path.append('../../')
 
 from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config, string_to_actioncode
-from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE,get_session
-from postomaat.extensions.dnsquery import HAVE_DNS, lookup, mxlookup
+from postomaat.extensions.sql import SQL_EXTENSION_ENABLED,get_session
+from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup, mxlookup
 import smtplib
 from string import Template
 import logging
@@ -103,17 +119,17 @@ class AddressCheck(ScannerPlugin):
         
         
     def lint(self):
-        if not SQLALCHEMY_AVAILABLE:
+        if not SQL_EXTENSION_ENABLED:
             print("sqlalchemy is not installed")
             return False
         
         if not self.checkConfig():
             return False
 
-        if self.config.get('ca_default', 'server').startswith('mx:') and not HAVE_DNS:
+        if self.config.get('ca_default', 'server').startswith('mx:') and not DNSQUERY_EXTENSION_ENABLED:
             print("no DNS resolver library available - required for mx resolution")
             return False
-        elif not HAVE_DNS:
+        elif not DNSQUERY_EXTENSION_ENABLED:
             print("no DNS resolver library available - some functionality will not be available")
         
         if self.config.get(self.section, 'cache_storage') == 'redis' and not HAVE_REDIS:
@@ -470,7 +486,7 @@ class SMTPTest(object):
             mailfrom=""
             
         result.stage=SMTPTestResult.STAGE_RESOLVE
-        if HAVE_DNS and not self.is_ip(relay):
+        if DNSQUERY_EXTENSION_ENABLED and not self.is_ip(relay):
             arecs = lookup(relay)
             if arecs is not None and len(arecs)==0:
                 result.state=SMTPTestResult.TEST_FAILED

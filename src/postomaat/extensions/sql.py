@@ -1,14 +1,30 @@
 # -*- coding: UTF-8 -*-
+#   Copyright 2009-2018 Oli Schacher
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+#
+
 import logging
 
-SQLALCHEMY_AVAILABLE=False
 try:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import scoped_session, sessionmaker
-    SQLALCHEMY_AVAILABLE=True
+    SQL_EXTENSION_ENABLED=True
 except ImportError:
-    pass
-ENABLED = SQLALCHEMY_AVAILABLE # fuglu compatibility
+    SQL_EXTENSION_ENABLED=False
+ENABLED = SQL_EXTENSION_ENABLED # fuglu compatibility
 
 
 _sessmaker = None
@@ -16,11 +32,11 @@ _engines = {}
 
 
 def get_session(connectstring, **kwargs):
-    global SQLALCHEMY_AVAILABLE
+    global SQL_EXTENSION_ENABLED
     global _sessmaker
     global _engines
 
-    if not SQLALCHEMY_AVAILABLE:
+    if not SQL_EXTENSION_ENABLED:
         raise Exception("sql extension not enabled")
 
     if connectstring in _engines:

@@ -1,8 +1,24 @@
 # -*- coding: UTF-8 -*-
+#   Copyright 2012-2018 Fumail Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+#
 
 from postomaat.shared import ScannerPlugin, DUNNO, strip_address, extract_domain, apply_template, FileList, \
     string_to_actioncode, get_default_cache
-from postomaat.extensions.sql import SQLALCHEMY_AVAILABLE, get_session, get_domain_setting
+from postomaat.extensions.sql import SQL_EXTENSION_ENABLED, get_session, get_domain_setting
 import os
 
 
@@ -103,7 +119,7 @@ class EnforceTLS(ScannerPlugin):
                 if not sqlquery.lower().startswith('select '):
                     lint_ok = False
                     print('SQL statement must be a SELECT query')
-                if not SQLALCHEMY_AVAILABLE:
+                if not SQL_EXTENSION_ENABLED:
                     print('SQLAlchemy not available, cannot use sql backend')
                 if lint_ok:
                     dbconnection = self.config.get(self.section, 'dbconnection')
