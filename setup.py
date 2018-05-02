@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 from distutils.core import setup
 import glob
 import sys
@@ -32,6 +33,14 @@ def git_version():
 
 
 
+def requirements():
+    install_requires = []
+    if sys.version_info > (2,7):
+        install_requires.append('importlib')
+    return install_requires
+
+
+
 setup(name = "postomaat",
     version = git_version(),
     description = "Postomaat Policy Daemon",
@@ -45,7 +54,9 @@ setup(name = "postomaat",
     data_files=[
                 ('/etc/postomaat',glob.glob('conf/*.dist')),
                 ('/etc/postomaat/conf.d',glob.glob('conf/conf.d/*.dist')),
-                ]
+                ],
+
+    install_requires=requirements(),
 ) 
 
 
