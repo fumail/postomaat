@@ -25,7 +25,7 @@ try:
     import runpy
     # needed since "execfile" is not
     # available in python >= 3
-except:
+except ImportError:
     pass
 
 class Stopped(Exception):
