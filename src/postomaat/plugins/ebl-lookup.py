@@ -17,7 +17,7 @@
 #
 
 from postomaat.shared import ScannerPlugin, DEFER_IF_PERMIT, DUNNO, REJECT, strip_address, extract_domain, apply_template, FileList
-from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup
+from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup, QTYPE_TXT
 import re
 from hashlib import sha1, md5
 try:
@@ -165,7 +165,7 @@ class EBLLookup(ScannerPlugin):
             for rec in result:
                 if rec == response:
                     listed = True
-                    result = lookup(query, qtype='TXT')
+                    result = lookup(query, qtype=QTYPE_TXT)
                     if result:
                         message = result[0]
                     break
