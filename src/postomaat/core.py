@@ -32,6 +32,7 @@ import postomaat.procpool
 import multiprocessing
 import multiprocessing.reduction
 import code
+import datetime
 
 from multiprocessing.reduction import ForkingPickler
 try:
@@ -52,7 +53,7 @@ class MainController(object):
     plugins=[]
     config=None
     
-    def __init__(self,config):
+    def __init__(self, config, logQueue=None, logProcessFacQueue=None):
         
         self.requiredvars={
             #main section
@@ -146,13 +147,31 @@ class MainController(object):
         self.stayalive=True
         self.threadpool=None
         self.procpool=None
-        self.debugconsole = False
+        self.controlserver = None
+        self.started = datetime.datetime.now()
         self.statsthread = None
+        self.debugconsole = False
+        self._logQueue = logQueue
+        self._logProcessFacQueue = logProcessFacQueue
+        self.configFileUpdates = None
+        self.logConfigFileUpdates = None
 
-        
+
+    @property
+    def logQueue(self):
+        return self._logQueue
+
+    @property
+    def logProcessFacQueue(self):
+        return self._logProcessFacQueue
+
+    @logProcessFacQueue.setter
+    def logProcessFacQueue(self, lProc):
+        self._logProcessFacQueue = lProc
+
     def _logger(self):
-        myclass=self.__class__.__name__
-        loggername="%s.%s"%(__package__, myclass)
+        myclass = self.__class__.__name__
+        loggername = "fuglu.%s" % (myclass,)
         return logging.getLogger(loggername)
 
     def _start_stats_thread(self):
@@ -183,7 +202,7 @@ class MainController(object):
         if numprocs < 1:
             numprocs = multiprocessing.cpu_count() *2
         self.logger.info("Init process pool with %s worker processes"%(numprocs))
-        pool = postomaat.procpool.ProcManager(numprocs = numprocs, config = self.config)
+        pool = postomaat.procpool.ProcManager(self._logQueue, numprocs = numprocs, config = self.config)
         return pool
 
     def startup(self):
@@ -313,7 +332,7 @@ class MainController(object):
 
         if plugins is None:
             raise Exception("no plugin configuration for current port selection")
-        sesshandler=SessionHandler(None, self.config, plugins)
+        sesshandler=SessionHandler(None, self.config, None, plugins, None)
         sesshandler.run_plugins(suspect, plugins)
         action=sesshandler.action
         arg=sesshandler.arg
@@ -402,6 +421,19 @@ class MainController(object):
                 allOK=False
         return allOK
 
+    def load_extensions(self):
+        """load fuglu extensions"""
+        ret = []
+        import postomaat.extensions
+        for extension in postomaat.extensions.__all__:
+            mod = __import__('%s.extensions.%s' % (__package__, extension))
+            ext = getattr(mod, 'extensions')
+            fl = getattr(ext, extension)
+            enabled = getattr(fl, 'ENABLED')
+            status = getattr(fl, 'STATUS')
+            name = getattr(fl, '__name__')
+            ret.append((name, enabled, status))
+        return ret
 
     def get_component_by_alias(self,pluginalias):
         """Returns the full plugin component from an alias. if this alias is not configured, return the original string"""
@@ -554,7 +586,7 @@ class PolicyServer(object):
                 sock, addr = self._socket.accept()
                 if not self.stayalive:
                     break
-                engine = SessionHandler(sock,controller.config,self.plugins)
+                engine = SessionHandler(sock, controller.config, None, self.plugins, None)
                 self.logger.debug('Incoming connection from %s'%str(addr))
                 if threadpool:
                     #this will block if queue is full
@@ -563,11 +595,8 @@ class PolicyServer(object):
                     # in multi processing, the other process manages configs and plugins itself, we only pass the minimum required information:
                     # a pickled version of the socket (this is no longer required in python 3.4, but in python 2 the multiprocessing queue can not handle sockets
                     # see https://stackoverflow.com/questions/36370724/python-passing-a-tcp-socket-object-to-a-multiprocessing-queue
-
                     task = forking_dumps(sock)
                     procpool.add_task(task)
-
-
                 else:
                     engine.handlesession()
             except Exception as e:

@@ -25,7 +25,8 @@ class SessionHandler(object):
 
     """thread handling one message"""
 
-    def __init__(self, incomingsocket, config, plugins):
+    def __init__(self, incomingsocket, config, prependers, plugins, appenders):
+        del prependers, appenders # fuglu api compatibility
         self.incomingsocket = incomingsocket
         self.logger = logging.getLogger("%s.SessionHandler" % __package__)
         self.action = DUNNO
