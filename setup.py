@@ -50,18 +50,30 @@ setup(name = "postomaat",
     package_dir={'':'src'},
     packages = ['postomaat','postomaat.plugins','postomaat.extensions'],
     scripts = ["src/startscript/postomaat","src/tools/postomaat_conf"],
-    long_description = """0""" ,
+    long_description = """Postomaat is a modular mail policy server written in python.""" ,
     data_files=[
                 ('/etc/postomaat',glob.glob('conf/*.dist')),
                 ('/etc/postomaat/conf.d',glob.glob('conf/conf.d/*.dist')),
                 ],
 
     install_requires=requirements(),
+
+    classifiers=[
+          'Development Status :: 5 - Production/Stable',
+          'Environment :: No Input/Output (Daemon)',
+          'Intended Audience :: Developers',
+          'Intended Audience :: System Administrators',
+          'License :: OSI Approved :: Apache Software License',
+          'Operating System :: POSIX',
+          'Programming Language :: Python',
+          'Topic :: Communications :: Email',
+          'Topic :: Communications :: Email :: Filters',
+    ],
 ) 
 
 
 #cleanup
-if OLD_VERSFILE_CONTENT!=None:
+if OLD_VERSFILE_CONTENT is not None:
     open(VERSFILE,'w').write(OLD_VERSFILE_CONTENT)
     
 
