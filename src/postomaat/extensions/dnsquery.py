@@ -23,13 +23,14 @@ except ImportError:
     resolver = None
     HAVE_DNSPYTHON=False
 
-try:
-    import DNS
-    HAVE_PYDNS=True
-    DNS.DiscoverNameServers()
-except ImportError:
-    DNS = None
-    HAVE_PYDNS=False
+HAVE_PYDNS=False
+if not HAVE_DNSPYTHON:
+    try:
+        import DNS
+        HAVE_PYDNS=True
+        DNS.DiscoverNameServers()
+    except ImportError:
+        DNS = None
 
 ENABLED = DNSQUERY_EXTENSION_ENABLED = HAVE_DNSPYTHON or HAVE_PYDNS
 
