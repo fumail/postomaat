@@ -34,7 +34,20 @@ except ImportError:
 ENABLED = DNSQUERY_EXTENSION_ENABLED = HAVE_DNSPYTHON or HAVE_PYDNS
 
 
-def lookup(hostname, qtype='A'):
+
+QTYPE_A = 'A'
+QTYPE_MX = 'MX'
+QTYPE_NS = 'NS'
+QTYPE_TXT = 'TXT'
+QTYPE_PTR = 'PTR'
+QTYPE_CNAME = 'CNAME'
+QTYPE_SPF = 'SPF'
+QTYPE_SRV = 'SRV'
+QTYPE_SOA = 'SOA'
+
+
+
+def lookup(hostname, qtype=QTYPE_A):
     try:
         if HAVE_DNSPYTHON:
             arecs = []
@@ -57,7 +70,7 @@ def mxlookup(domain):
     try:
         if HAVE_DNSPYTHON:
             mxrecs = []
-            mxrequest = resolver.query(domain, 'MX')
+            mxrequest = resolver.query(domain, QTYPE_MX)
             for rec in mxrequest:
                 mxrecs.append(rec.to_text())
             mxrecs.sort() #automatically sorts by priority
@@ -84,6 +97,6 @@ def revlookup(ip):
     a = ip.split('.')
     a.reverse()
     revip = '.'.join(a)+'.in-addr.arpa'
-    return lookup(revip, qtype='PTR')
+    return lookup(revip, qtype=QTYPE_PTR)
 
 
