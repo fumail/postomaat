@@ -58,56 +58,56 @@ class MainController(object):
         self.requiredvars={
             #main section
             'identifier':{
-              'section':'main',
-              'description':"""identifier can be any string that helps you identifying your config file\nthis helps making sure the correct config is loaded. this identifier will be printed out when postomaat is reloading its config""",
-              'default':'dist',
+                'section':'main',
+                'description':"""identifier can be any string that helps you identifying your config file\nthis helps making sure the correct config is loaded. this identifier will be printed out when postomaat is reloading its config""",
+                'default':'dist',
             },
-                           
+            
             'daemonize':{
-              'section':'main',
-              'description':"run as a daemon? (fork)",
-              'default':"1",
-              #todo: validator...?
+                'section':'main',
+                'description':"run as a daemon? (fork)",
+                'default':"1",
+                #todo: validator...?
             },
-                           
+            
             'user':{
-              'section':'main',
-              'description':"run as user",
-              'default':"nobody",
-              #todo: validator, check user...?
-            },  
-                           
+                'section':'main',
+                'description':"run as user",
+                'default':"nobody",
+                #todo: validator, check user...?
+            },
+            
             'group':{
-              'section':'main',
-              'description':"run as group",
-              'default':"nobody",
-              #todo: validator, check user...?
-            },   
-                           
-           'plugindir':{
-              'section':'main',
-              'description':"where should postomaat search for additional plugins",
-              'default':"",
+                'section':'main',
+                'description':"run as group",
+                'default':"nobody",
+                #todo: validator, check user...?
             },
-                           
+            
+            'plugindir':{
+                'section':'main',
+                'description':"where should postomaat search for additional plugins",
+                'default':"",
+            },
+            
             'plugins':{
-              'section':'main',
-              'description':"what plugins do we load, comma separated",
-              'default':"",
+                'section':'main',
+                'description':"what plugins do we load, comma separated",
+                'default':"",
             },
-
+            
             'bindaddress':{
-              'section':'main',
-              'description':"address postomaat should listen on. usually 127.0.0.1 so connections are accepted from local host only",
-              'default':"127.0.0.1",
+                'section':'main',
+                'description':"address postomaat should listen on. usually 127.0.0.1 so connections are accepted from local host only",
+                'default':"127.0.0.1",
             },
-                                        
+            
             'incomingport':{
-              'section':'main',
-              'description':"incoming port",
-              'default':"9998",
+                'section':'main',
+                'description':"incoming port",
+                'default':"9998",
             },
-        
+            
             #performance section
             'minthreads':{
                 'default':"2",
@@ -129,17 +129,17 @@ class MainController(object):
                 'section': 'performance',
                 'description': "Initial number of processes when backend='process'. If 0 (the default), automatically selects twice the number of available virtual cores. Despite its 'initial'-name, this number currently is not adapted automatically.",
             },
-
+            
             #  plugin alias
-             'call-ahead':{
+            'call-ahead':{
                 'default':"postomaat.plugins.call-ahead.AddressCheck",
                 'section':'PluginAlias',
             },
-                           
-             'dbwriter':{
+            
+            'dbwriter':{
                 'default':"postomaat.plugins.dbwriter.DBWriter",
                 'section':'PluginAlias',
-            },       
+            },
         }
         self.config=config
         self.servers=[]
