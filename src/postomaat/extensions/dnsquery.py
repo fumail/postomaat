@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 #   Copyright 2009-2018 Fumail Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,10 +15,12 @@
 #
 #
 #
+STATUS = "not loaded"
 
 try:
     from dns import resolver
     HAVE_DNSPYTHON=True
+    STATUS = "available"
 except ImportError:
     resolver = None
     HAVE_DNSPYTHON=False
@@ -29,8 +31,10 @@ if not HAVE_DNSPYTHON:
         import DNS
         HAVE_PYDNS=True
         DNS.DiscoverNameServers()
+        STATUS = "available"
     except ImportError:
         DNS = None
+        STATUS = "DNS not installed"
 
 ENABLED = DNSQUERY_EXTENSION_ENABLED = HAVE_DNSPYTHON or HAVE_PYDNS
 
@@ -56,13 +60,13 @@ def lookup(hostname, qtype=QTYPE_A):
             for rec in arequest:
                 arecs.append(rec.to_text())
             return arecs
-        
+
         elif HAVE_PYDNS:
             return DNS.dnslookup(hostname, qtype)
-        
+
     except Exception:
         return None
-    
+
     return None
 
 
@@ -74,22 +78,22 @@ def mxlookup(domain):
             mxrequest = resolver.query(domain, QTYPE_MX)
             for rec in mxrequest:
                 mxrecs.append(rec.to_text())
-            mxrecs.sort() #automatically sorts by priority
-            return [x.split(None,1)[-1] for x in mxrecs]
-        
+            mxrecs.sort()  # automatically sorts by priority
+            return [x.split(None, 1)[-1] for x in mxrecs]
+
         elif HAVE_PYDNS:
-            mxrecs=[]
+            mxrecs = []
             mxrequest = DNS.mxlookup(domain)
             for dataset in mxrequest:
                 if type(dataset) == tuple:
                     mxrecs.append(dataset)
-                    
-            mxrecs.sort() #automatically sorts by priority
+
+            mxrecs.sort()  # automatically sorts by priority
             return [x[1] for x in mxrecs]
-        
+
     except Exception:
         return None
-    
+
     return None
 
 
@@ -99,5 +103,3 @@ def revlookup(ip):
     a.reverse()
     revip = '.'.join(a)+'.in-addr.arpa'
     return lookup(revip, qtype=QTYPE_PTR)
-
-
