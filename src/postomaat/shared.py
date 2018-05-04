@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import postomaat.MailAddrLegitimateChecker
 import logging
 import time
 import socket
@@ -177,6 +178,7 @@ class Suspect(object):
     The suspect represents the message to be scanned. Each scannerplugin will be presented
     with a suspect and may modify the tags
     """
+    addrIsLegitimate = None
     
     def __init__(self,values):
         self.values=values
@@ -188,6 +190,16 @@ class Suspect(object):
         
         #additional basic information
         self.timestamp=time.time()
+
+        # setup checker for email validation if not already set
+        if Suspect.addrIsLegitimate is None:
+            Suspect.addrIsLegitimate = postomaat.MailAddrLegitimateChecker.Default()
+            
+        if self.to_address is not None and self.to_address != '' and not Suspect.addrIsLegitimate(self.to_address):
+            raise ValueError("invalid recipient address: %s"%self.to_address)
+            
+        if self.from_address is not None and self.from_address != '' and not Suspect.addrIsLegitimate(self.from_address):
+            raise ValueError("invalid sender address: %s"%self.from_address)
 
     def get_value(self,key):
         """returns one of the postfix supplied values"""

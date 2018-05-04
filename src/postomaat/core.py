@@ -107,6 +107,24 @@ class MainController(object):
                 'description':"incoming port",
                 'default':"9998",
             },
+
+            'address_compliance_checker': {
+                'section': 'main',
+                'description': "Method to check mail address validity (\"Default\",\"LazyLocalPart\")",
+                'default': "Default",
+            },
+            
+            'address_compliance_fail_action': {
+                'section': 'main',
+                'description': "Action to perform if address validity check fails (\"defer\",\"reject\")",
+                'default': "defer",
+            },
+            
+            'address_compliance_fail_message': {
+                'section': 'main',
+                'description': "Reply message if address validity check fails",
+                'default': "invalid send or receive address",
+            },
             
             #performance section
             'minthreads':{
