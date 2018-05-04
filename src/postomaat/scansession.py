@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from postomaat.shared import DUNNO, Suspect
+from postomaat.shared import DUNNO, DEFER, REJECT, Suspect
+from postomaat.MailAddrLegitimateChecker import Default, LazyQuotedLocalPart
 import logging
 import sys
 import traceback
@@ -25,7 +26,8 @@ class SessionHandler(object):
 
     """thread handling one message"""
 
-    def __init__(self, incomingsocket, config, plugins):
+    def __init__(self, incomingsocket, config, prependers, plugins, appenders):
+        del prependers, appenders # fuglu api compatibility
         self.incomingsocket = incomingsocket
         self.logger = logging.getLogger("%s.SessionHandler" % __package__)
         self.action = DUNNO
@@ -33,14 +35,36 @@ class SessionHandler(object):
         self.config = config
         self.plugins = plugins
         self.workerthread = None
-
+    
+    
     def set_threadinfo(self, status):
         if self.workerthread is not None:
             self.workerthread.threadinfo = status
-
+    
+    
     def handlesession(self, workerthread=None):
         self.workerthread = workerthread
         sess = None
+        
+        #--
+        # setup compliance checker if not already set up
+        #--
+        #
+        # Mail Address compliance check is global, make sure it is updated when config is changed
+        try:
+            addComCheck = self.config.get('main','address_compliance_checker')
+        except Exception as e:
+            # might happen for some tests which do not propagate defaults
+            addComCheck = Default
+
+        if addComCheck == "Default" and not isinstance(Suspect.addrIsLegitimate,Default):
+            Suspect.addrIsLegitimate = Default()
+        elif addComCheck == "LazyQuotedLocalPart" and not isinstance(Suspect.addrIsLegitimate,LazyQuotedLocalPart):
+            Suspect.addrIsLegitimate = LazyQuotedLocalPart()
+        else:
+            self.logger.error('Address Compliance Checker not recognized -> use Default')
+            Suspect.addrIsLegitimate = Default()
+        
         try:
             self.set_threadinfo('receiving message')
             sess = PolicydSession(self.incomingsocket, self. config)
@@ -49,7 +73,7 @@ class SessionHandler(object):
                 self.logger.error('incoming request did not finish')
                 sess.closeconn()
 
-            values = sess. values
+            values = sess.values
             suspect = Suspect(values)
 
             # store incoming port to tag, could be used to disable plugins
@@ -76,12 +100,33 @@ class SessionHandler(object):
 
         except KeyboardInterrupt:
             sys.exit(0)
+            
+        except ValueError:
+            if sess is not None:
+                # Error in envelope send/receive address
+                try:
+                    address_compliance_fail_action = self.config.get('main','address_compliance_fail_action').lower()
+                except Exception as e:
+                    address_compliance_fail_action = "defer"
+    
+                try:
+                    message = self.config.get('main','address_compliance_fail_message')
+                except Exception as e:
+                    message = "invalid sender or recipient address"
+                
+                if address_compliance_fail_action == "reject":
+                    sess.endsession(REJECT, message)
+                else:
+                    sess.endsession(DEFER, message)
+                sess.closeconn()
+                
         except Exception as e:
             self.logger.exception(e)
             if sess is not None:
                 sess.closeconn()
         self.logger.debug('Session finished')
-
+    
+    
     def run_plugins(self, suspect, pluglist):
         """Run scannerplugins on suspect"""
         for plugin in pluglist:

@@ -32,6 +32,7 @@ import postomaat.procpool
 import multiprocessing
 import multiprocessing.reduction
 import code
+import datetime
 
 from multiprocessing.reduction import ForkingPickler
 try:
@@ -52,61 +53,79 @@ class MainController(object):
     plugins=[]
     config=None
     
-    def __init__(self,config):
+    def __init__(self, config, logQueue=None, logProcessFacQueue=None):
         
         self.requiredvars={
             #main section
             'identifier':{
-              'section':'main',
-              'description':"""identifier can be any string that helps you identifying your config file\nthis helps making sure the correct config is loaded. this identifier will be printed out when postomaat is reloading its config""",
-              'default':'dist',
+                'section':'main',
+                'description':"""identifier can be any string that helps you identifying your config file\nthis helps making sure the correct config is loaded. this identifier will be printed out when postomaat is reloading its config""",
+                'default':'dist',
             },
-                           
+            
             'daemonize':{
-              'section':'main',
-              'description':"run as a daemon? (fork)",
-              'default':"1",
-              #todo: validator...?
+                'section':'main',
+                'description':"run as a daemon? (fork)",
+                'default':"1",
+                #todo: validator...?
             },
-                           
+            
             'user':{
-              'section':'main',
-              'description':"run as user",
-              'default':"nobody",
-              #todo: validator, check user...?
-            },  
-                           
-            'group':{
-              'section':'main',
-              'description':"run as group",
-              'default':"nobody",
-              #todo: validator, check user...?
-            },   
-                           
-           'plugindir':{
-              'section':'main',
-              'description':"where should postomaat search for additional plugins",
-              'default':"",
+                'section':'main',
+                'description':"run as user",
+                'default':"nobody",
+                #todo: validator, check user...?
             },
-                           
+            
+            'group':{
+                'section':'main',
+                'description':"run as group",
+                'default':"nobody",
+                #todo: validator, check user...?
+            },
+            
+            'plugindir':{
+                'section':'main',
+                'description':"where should postomaat search for additional plugins",
+                'default':"",
+            },
+            
             'plugins':{
-              'section':'main',
-              'description':"what plugins do we load, comma separated",
-              'default':"",
+                'section':'main',
+                'description':"what plugins do we load, comma separated",
+                'default':"",
+            },
+            
+            'bindaddress':{
+                'section':'main',
+                'description':"address postomaat should listen on. usually 127.0.0.1 so connections are accepted from local host only",
+                'default':"127.0.0.1",
+            },
+            
+            'incomingport':{
+                'section':'main',
+                'description':"incoming port",
+                'default':"9998",
             },
 
-            'bindaddress':{
-              'section':'main',
-              'description':"address postomaat should listen on. usually 127.0.0.1 so connections are accepted from local host only",
-              'default':"127.0.0.1",
+            'address_compliance_checker': {
+                'section': 'main',
+                'description': "Method to check mail address validity (\"Default\",\"LazyLocalPart\")",
+                'default': "Default",
             },
-                                        
-            'incomingport':{
-              'section':'main',
-              'description':"incoming port",
-              'default':"9998",
+            
+            'address_compliance_fail_action': {
+                'section': 'main',
+                'description': "Action to perform if address validity check fails (\"defer\",\"reject\")",
+                'default': "defer",
             },
-        
+            
+            'address_compliance_fail_message': {
+                'section': 'main',
+                'description': "Reply message if address validity check fails",
+                'default': "invalid send or receive address",
+            },
+            
             #performance section
             'minthreads':{
                 'default':"2",
@@ -128,17 +147,17 @@ class MainController(object):
                 'section': 'performance',
                 'description': "Initial number of processes when backend='process'. If 0 (the default), automatically selects twice the number of available virtual cores. Despite its 'initial'-name, this number currently is not adapted automatically.",
             },
-
+            
             #  plugin alias
-             'call-ahead':{
+            'call-ahead':{
                 'default':"postomaat.plugins.call-ahead.AddressCheck",
                 'section':'PluginAlias',
             },
-                           
-             'dbwriter':{
+            
+            'dbwriter':{
                 'default':"postomaat.plugins.dbwriter.DBWriter",
                 'section':'PluginAlias',
-            },       
+            },
         }
         self.config=config
         self.servers=[]
@@ -146,13 +165,31 @@ class MainController(object):
         self.stayalive=True
         self.threadpool=None
         self.procpool=None
-        self.debugconsole = False
+        self.controlserver = None
+        self.started = datetime.datetime.now()
         self.statsthread = None
+        self.debugconsole = False
+        self._logQueue = logQueue
+        self._logProcessFacQueue = logProcessFacQueue
+        self.configFileUpdates = None
+        self.logConfigFileUpdates = None
 
-        
+
+    @property
+    def logQueue(self):
+        return self._logQueue
+
+    @property
+    def logProcessFacQueue(self):
+        return self._logProcessFacQueue
+
+    @logProcessFacQueue.setter
+    def logProcessFacQueue(self, lProc):
+        self._logProcessFacQueue = lProc
+
     def _logger(self):
-        myclass=self.__class__.__name__
-        loggername="%s.%s"%(__package__, myclass)
+        myclass = self.__class__.__name__
+        loggername = "fuglu.%s" % (myclass,)
         return logging.getLogger(loggername)
 
     def _start_stats_thread(self):
@@ -183,7 +220,7 @@ class MainController(object):
         if numprocs < 1:
             numprocs = multiprocessing.cpu_count() *2
         self.logger.info("Init process pool with %s worker processes"%(numprocs))
-        pool = postomaat.procpool.ProcManager(numprocs = numprocs, config = self.config)
+        pool = postomaat.procpool.ProcManager(self._logQueue, numprocs = numprocs, config = self.config)
         return pool
 
     def startup(self):
@@ -313,7 +350,7 @@ class MainController(object):
 
         if plugins is None:
             raise Exception("no plugin configuration for current port selection")
-        sesshandler=SessionHandler(None, self.config, plugins)
+        sesshandler=SessionHandler(None, self.config, None, plugins, None)
         sesshandler.run_plugins(suspect, plugins)
         action=sesshandler.action
         arg=sesshandler.arg
@@ -402,6 +439,19 @@ class MainController(object):
                 allOK=False
         return allOK
 
+    def load_extensions(self):
+        """load fuglu extensions"""
+        ret = []
+        import postomaat.extensions
+        for extension in postomaat.extensions.__all__:
+            mod = __import__('%s.extensions.%s' % (__package__, extension))
+            ext = getattr(mod, 'extensions')
+            fl = getattr(ext, extension)
+            enabled = getattr(fl, 'ENABLED')
+            status = getattr(fl, 'STATUS')
+            name = getattr(fl, '__name__')
+            ret.append((name, enabled, status))
+        return ret
 
     def get_component_by_alias(self,pluginalias):
         """Returns the full plugin component from an alias. if this alias is not configured, return the original string"""
@@ -554,7 +604,7 @@ class PolicyServer(object):
                 sock, addr = self._socket.accept()
                 if not self.stayalive:
                     break
-                engine = SessionHandler(sock,controller.config,self.plugins)
+                engine = SessionHandler(sock, controller.config, None, self.plugins, None)
                 self.logger.debug('Incoming connection from %s'%str(addr))
                 if threadpool:
                     #this will block if queue is full
@@ -563,11 +613,8 @@ class PolicyServer(object):
                     # in multi processing, the other process manages configs and plugins itself, we only pass the minimum required information:
                     # a pickled version of the socket (this is no longer required in python 3.4, but in python 2 the multiprocessing queue can not handle sockets
                     # see https://stackoverflow.com/questions/36370724/python-passing-a-tcp-socket-object-to-a-multiprocessing-queue
-
                     task = forking_dumps(sock)
                     procpool.add_task(task)
-
-
                 else:
                     engine.handlesession()
             except Exception as e:

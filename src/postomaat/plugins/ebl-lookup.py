@@ -102,7 +102,7 @@ class EBLLookup(ScannerPlugin):
         
         address = address.lower()
         
-        lhs, domain = address.split('@',1)
+        lhs, domain = address.rsplit('@',1)
         domainparts = domain.split('.')
         
         if 'googlemail' in domainparts: # replace googlemail with gmail
