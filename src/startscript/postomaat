@@ -184,14 +184,20 @@ if  not (lint or debugmsg or console or opts.foreground):
             daemon.createDaemon()
     else: #option not specified -> default to run daemon
         daemon.createDaemon()
+
+# drop privileges
+try:
+    running_user=config.get('main','user')
+    running_group=config.get('main','group')
+except Exception:
+    running_user='nobody'
+    running_group='nobody'
+
+daemon.drop_privs(running_user, running_group)
+
+
         
 if lint or debugmsg:
-    level=logging.INFO
-    if opts.debug:
-        level=logging.DEBUG
-
-    logging.basicConfig(level=level)
-    
     fc=postomaat.funkyconsole.FunkyConsole()
     print(fc.strcolor("postomaat", "yellow"))
     print(fc.strcolor(POSTOMAAT_VERSION, "green"))
@@ -199,22 +205,41 @@ if lint or debugmsg:
     # check if directory used by logfile exists
     if not checkLogfileConfig(theloggingfile):
         sys.exit(1)
-else:
-    logging.config.fileConfig(theloggingfile)
 
-controller=MainController(config)
-controller.propagate_core_defaults()
+    level=logging.INFO
+    if opts.debug:
+        level=logging.DEBUG
+    logConfigure = postomaat.logtools.logConfig(lint=True,lintlevel=level)
+else:
+    logConfigure = postomaat.logtools.logConfig(logConfigFile=theloggingfile)
+
+#--
+# start process handling logging queue
+#--
+logProcessFactory = multiprocessing.Process(target=fuglu.logtools.logFactoryProcess,
+                                     args=(logFactoryQueue,logQueue))
+logProcessFactory.start()
+
+# now create a log - listener process
+logFactoryQueue.put(logConfigure)
+
+# setup this main thread to send messages to the log queue 
+# (which is handled by the logger process created by the logProcessFactory)
+fuglu.logtools.client_configurer(logQueue)
+
+#===                      ===#
+#= Now logging is available =#
+#===                      ===#
 baselogger=logging.getLogger('')
 baselogger.info("postomaat version %s starting up"%POSTOMAAT_VERSION)
 
-try:
-    running_user=config.get('main','user')
-    running_group=config.get('main','group')
-except Exception:
-    running_user='nobody'
-    running_group='nobody'
-daemon.drop_privs(running_user,running_group)
+controller=MainController(config)
+controller.propagate_core_defaults()
 
+# all threads/processes write to the logQueue which
+# will be handled by a separate process
+logQueue   = multiprocessing.Queue(-1)
+logFactoryQueue = multiprocessing.Queue(-1)
 
 if lint:
     controller.lint()
@@ -235,4 +260,13 @@ else:
         controller.debugconsole = True
     controller.startup()
 
-
+#---
+# stop logger factory & process
+#---
+baselogger.info("Stop logging framework -> Goodbye")
+try:
+    baselogger.debug("Send Poison pill to logFactoryQueue")
+    logFactoryQueue.put_nowait(None)
+    logProcessFactory.join(120)
+except Exception as e:
+    logProcessFactory.terminate()
