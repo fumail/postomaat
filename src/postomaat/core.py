@@ -262,8 +262,8 @@ class MainController(object):
             
         #smtp engine changes?
         ports=self.config.get('main', 'incomingport')
-        portlist=map(int,ports.split(','))
-        
+        portlist = [int(p) for p in ports.split(',')]
+
         for port in portlist:
             alreadyRunning=False
             for serv in self.servers:
