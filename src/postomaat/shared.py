@@ -19,6 +19,7 @@ import socket
 import os
 import datetime
 import threading
+from postomaat.addrcheck import Addrcheck
 from string import Template
 try:
     import configparser
@@ -189,6 +190,28 @@ class Suspect(object):
         #additional basic information
         self.timestamp=time.time()
 
+        #--
+        # basic mail address compliance check
+        # -> nothing more than necessary for our internal assumptions
+        #--
+        sender     = self.from_address
+        recipients = self.to_address
+
+        # backwards compatibility, recipients can be a single address
+        if not isinstance(recipients, list):
+            recipients = [recipients, ]
+
+        # basic email validitiy check - nothing more than necessary for our internal assumptions
+        for rec in recipients:
+            if rec is None:
+                raise ValueError("Recipient address can not be None")
+            if not Addrcheck().valid(rec):
+                raise ValueError("Invalid recipient address: %s"%rec)
+
+        if sender is not None and sender != '' and not Addrcheck().valid(sender):
+            raise ValueError("invalid sender address: %s"%sender)
+
+        # perform address check
     def get_value(self,key):
         """returns one of the postfix supplied values"""
         if not key in self.values:

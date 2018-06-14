@@ -52,7 +52,19 @@ class MainController(object):
     plugins=[]
     config=None
     
-    def __init__(self,config):
+    def __init__(self, config, logQueue=None, logProcessFacQueue=None):
+        """
+        Main controller instance
+        Note: The logQueue and logProcessFacQueue keyword args are only needed in the postomaat main process when logging
+              to files. For default logging to the screen there is not logQueue needed.
+
+        Args:
+            config (configparser.RawConfigParser()): Config file parser (file already read)
+
+        Keyword Args:
+            logQueue (multiprocessing.queue or None): Queue where to put log messages (not directly used, only by loggers as defined in logtools.client_configurer)
+            logProcessFacQueue (multiprocessing.queue or None): Queue where to put new logging configurations (logtools.logConfig objects)
+        """
         
         self.requiredvars={
             #main section
@@ -118,6 +130,22 @@ class MainController(object):
                 'section':'performance',
                 'description':'maximum scanner threads',
             },
+
+            'address_compliance_checker': {
+                'section': 'main',
+                'description': "Method to check mail address validity (\"Default\",\"LazyLocalPart\")",
+                'default': "Default",
+            },
+            'address_compliance_fail_action': {
+                'section': 'main',
+                'description': "Action to perform if address validity check fails (\"defer\",\"reject\",\"discard\")",
+                'default': "defer",
+            },
+            'address_compliance_fail_message': {
+                'section': 'main',
+                'description': "Reply message if address validity check fails",
+                'default': "invalid sender or recipient address",
+            },
             'backend': {
                 'default': "thread",
                 'section': 'performance',
@@ -148,6 +176,22 @@ class MainController(object):
         self.procpool=None
         self.debugconsole = False
         self.statsthread = None
+        self._logQueue = logQueue
+        self._logProcessFacQueue = logProcessFacQueue
+        self.configFileUpdates = None
+        self.logConfigFileUpdates = None
+
+    @property
+    def logQueue(self):
+        return self._logQueue
+
+    @property
+    def logProcessFacQueue(self):
+        return self._logProcessFacQueue
+
+    @logProcessFacQueue.setter
+    def logProcessFacQueue(self, lProc):
+        self._logProcessFacQueue = lProc
 
         
     def _logger(self):
@@ -183,7 +227,7 @@ class MainController(object):
         if numprocs < 1:
             numprocs = multiprocessing.cpu_count() *2
         self.logger.info("Init process pool with %s worker processes"%(numprocs))
-        pool = postomaat.procpool.ProcManager(numprocs = numprocs, config = self.config)
+        pool = postomaat.procpool.ProcManager(self._logQueue, numprocs = numprocs, config = self.config)
         return pool
 
     def startup(self):
@@ -250,18 +294,52 @@ class MainController(object):
         """apply config changes"""
         self.logger.info('Applying configuration changes...')
 
-        #threadpool changes?
-        if self.config.get('performance','backend') == 'thread' and self.threadpool is not None:
-            minthreads=self.config.getint('performance','minthreads')
-            maxthreads=self.config.getint('performance','maxthreads')
-        
-            if self.threadpool.minthreads!=minthreads or self.threadpool.maxthreads!=maxthreads:
-                self.logger.info('Threadpool config changed, initialising new threadpool')
-                queuesize=maxthreads*10
-                currentthreadpool=self.threadpool
-                self.threadpool=ThreadPool(minthreads, maxthreads, queuesize)
-                currentthreadpool.stayalive=False
-            
+        backend = self.config.get('performance','backend')
+
+        if backend == 'thread':
+            if self.threadpool is not None:
+                minthreads = self.config.getint('performance', 'minthreads')
+                maxthreads = self.config.getint('performance', 'maxthreads')
+
+                # threadpool changes?
+                if self.threadpool.minthreads != minthreads or self.threadpool.maxthreads != maxthreads:
+                    self.logger.info('Threadpool config changed, initialising new threadpool')
+                    currentthreadpool = self.threadpool
+                    self.threadpool = self._start_threadpool()
+                    currentthreadpool.shutdown()
+                else:
+                    self.logger.info('Keep existing threadpool')
+            else:
+                self.logger.info('Create new threadpool')
+                self.threadpool = self._start_threadpool()
+
+            # stop existing procpool
+            if self.procpool is not None:
+                self.logger.info('Delete old procpool')
+                self.procpool.shutdown()
+                self.procpool = None
+
+        elif backend == 'process':
+            # start new procpool
+            currentProcPool = self.procpool
+            self.logger.info('Create new processpool')
+            self.procpool = self._start_processpool()
+
+            # stop existing procpool
+            # -> the procpool has to be recreated to take configuration changes
+            #    into account (each worker process has its own controller unlike using threadpool)
+            if currentProcPool is not None:
+                self.logger.info('Delete old processpool')
+                currentProcPool.shutdown()
+
+            # stop existing threadpool
+            if self.threadpool is not None:
+                self.logger.info('Delete old threadpool')
+                self.threadpool.shutdown()
+                self.threadpool = None
+        else:
+            self.logger.error('backend %s not detected -> ignoring input! (valid options \"thread\" and \"process\")'%backend)
+
         #smtp engine changes?
         ports=self.config.get('main', 'incomingport')
         portlist = [int(p) for p in ports.split(',')]
@@ -274,19 +352,25 @@ class MainController(object):
                     break
             
             if not alreadyRunning:
+                self.logger.info('start new policy server at %s' % str(port))
                 server=PolicyServer(self,port=port,address=self.config.get('main', 'bindaddress'))
                 tr = threading.Thread(target=server.serve, args=())
                 tr.daemon = True
                 tr.start()
                 self.servers.append(server)
+            else:
+                self.logger.debug('keep existing policy server at %s' % str(port))
+
         
         servercopy=self.servers[:] 
         for serv in servercopy:
             if serv.port not in portlist:
-                self.logger.info('Closing server socket on port %s'%serv.port)
+                self.logger.info('Closing server socket on port %s' % serv.port)
                 serv.shutdown()
                 self.servers.remove(serv)
-        
+            else:
+                self.logger.info('Keep server socket on port %s' % serv.port)
+
         self.logger.info('Config changes applied')
     
     
@@ -322,15 +406,23 @@ class MainController(object):
         return (action,arg)
          
     def shutdown(self):
-        self.statsthread.stayalive = False
+        if self.statsthread:
+            self.statsthread.stayalive = False
         for server in self.servers:
-            self.logger.info('Closing server socket on port %s'%server.port)
+            self.logger.info('Closing server socket on port %s' % server.port)
             server.shutdown()
         
-        if self.threadpool:
-            self.threadpool.stayalive = False
-        if self.procpool:
-            self.procpool.stayalive = False
+        # stop existing procpool
+        if self.procpool is not None:
+            self.logger.info('Delete procpool')
+            self.procpool.shutdown()
+            self.procpool = None
+        # stop existing threadpool
+        if self.threadpool is not None:
+            self.logger.info('Delete threadpool')
+            self.threadpool.shutdown()
+            self.threadpool = None
+
         self.stayalive=False
         self.logger.info('Shutdown complete')
         self.logger.info('Remaining threads: %s' %threading.enumerate())
@@ -417,19 +509,20 @@ class MainController(object):
     
     def load_plugins(self):
         """load plugins defined in config"""
-        
-        allOK=True
+        allOK = True
+        # checking directories, ignore empty string or None
+        # (if plugin dir is not set, this would oterhwise result in an array containing one empty string [""]
+        #  which would still be processed and a warning printed)
+        plugindirs = [dir for dir in self.config.get('main', 'plugindir').strip().split(',') if dir]
+        for plugindir in plugindirs:
+            if os.path.isdir(plugindir):
+                self.logger.debug('Searching for additional plugins in %s' % plugindir)
+                if plugindir not in sys.path:
+                    sys.path.insert(0, plugindir)
+            else:
+                self.logger.warning('Plugin directory %s not found' % plugindir)
 
-        plugdir=self.config.get('main', 'plugindir').strip()
-        if plugdir!="" and not os.path.isdir(plugdir):
-            self.logger.warning('Plugin directory %s not found'%plugdir)
-        
-        if plugdir!="":   
-            self.logger.debug('Searching for additional plugins in %s'%plugdir)
-            if plugdir not in sys.path:
-                sys.path.insert(0,plugdir)
-    
-        self.logger.debug('Module search path %s'%sys.path)
+        self.logger.debug('Module search path %s' % sys.path)
         self.logger.debug('Loading scanner plugins')
         
         newplugins,loadok=self._load_all(self.config.get('main', 'plugins'))
@@ -545,10 +638,6 @@ class PolicyServer(object):
         
     def serve(self):
 
-        controller = self.controller
-        threadpool = self.controller.threadpool
-        procpool   = self.controller.procpool
-
         self.logger.info('policy server running on port %s'%self.port)
         while self.stayalive:
             try:
@@ -556,18 +645,18 @@ class PolicyServer(object):
                 sock, addr = self._socket.accept()
                 if not self.stayalive:
                     break
-                engine = SessionHandler(sock,controller.config,self.plugins)
+                engine = SessionHandler(sock,self.controller.config,self.plugins)
                 self.logger.debug('Incoming connection from %s'%str(addr))
-                if threadpool:
+                if self.controller.threadpool:
                     #this will block if queue is full
                     self.controller.threadpool.add_task(engine)
-                elif procpool:
+                elif self.controller.procpool:
                     # in multi processing, the other process manages configs and plugins itself, we only pass the minimum required information:
                     # a pickled version of the socket (this is no longer required in python 3.4, but in python 2 the multiprocessing queue can not handle sockets
                     # see https://stackoverflow.com/questions/36370724/python-passing-a-tcp-socket-object-to-a-multiprocessing-queue
 
                     task = forking_dumps(sock)
-                    procpool.add_task(task)
+                    self.controller.procpool.add_task(task)
 
 
                 else:

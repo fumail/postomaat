@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from postomaat.shared import DUNNO, Suspect
+from postomaat.shared import DUNNO, Suspect, DEFER, REJECT, DISCARD
 import logging
 import sys
 import traceback
@@ -72,15 +72,37 @@ class SessionHandler(object):
             # checks done.. print out suspect status
             self.logger.debug(suspect)
             self.set_threadinfo("Finishing message %s" % suspect)
-            sess.endsession(self.action, self.arg)
 
         except KeyboardInterrupt:
             sys.exit(0)
+        except ValueError:
+            # Error in envelope send/receive address
+            try:
+                address_compliance_fail_action = self.config.get('main','address_compliance_fail_action').lower()
+            except Exception:
+                address_compliance_fail_action = "defer"
+
+            try:
+                message = self.config.get('main','address_compliance_fail_message')
+            except Exception:
+                message = "invalid sender or recipient address"
+
+            if address_compliance_fail_action   == "defer":
+                self.action = DEFER
+            elif address_compliance_fail_action == "reject":
+                self.action = REJECT
+            elif address_compliance_fail_action == "discard":
+                self.action = DISCARD
+            else:
+                self.action = DEFER
+            self.arg = message
+
         except Exception as e:
             self.logger.exception(e)
+        finally:
             if sess is not None:
-                sess.closeconn()
-        self.logger.debug('Session finished')
+                sess.endsession(self.action, self.arg)
+            self.logger.debug('Session finished')
 
     def run_plugins(self, suspect, pluglist):
         """Run scannerplugins on suspect"""

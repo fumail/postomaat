@@ -28,10 +28,13 @@ import logging.config
 import postomaat.funkyconsole
 import sys
 from postomaat.core import MainController
+from postomaat.addrcheck import Addrcheck
 import signal
 import os
 import optparse
 from postomaat.checkLogfileConfig import checkLogfileConfig
+import multiprocessing
+import hashlib
 
 controller=None
 
@@ -43,42 +46,133 @@ thepidfile = '/var/run/postomaat.pid'
 
 def reloadconfig():
     """reload configuration file"""
-    logger=logging.getLogger('postomaat')
-    logger.info('Reloading configuration')
-    newconfig=ConfigParser.ConfigParser()
-    newconfig.readfp(open(theconfigfile))
-    
-    identifier="no identifier given"
-    if newconfig.has_option('main', 'identifier'):
-        identifier=newconfig.get('main','identifier')
-    
-    #load conf.d
-    if os.path.isdir(dconfdir):
-        filelist=os.listdir(dconfdir)
-        configfiles=[dconfdir+'/'+c for c in filelist if c.endswith('.conf')]
-        logger.debug('Conffiles in %s: %s'%(dconfdir,configfiles))
-        readfiles=newconfig.read(configfiles)
-        logger.debug('Read additional files: %s'%(readfiles))
 
-    logger.info('Reload config complete. Current configuration:%s'%identifier)
-    controller.config=newconfig
-    controller.propagate_core_defaults()
-    
-    logger.info('Reloading plugins...')
-    ok=controller.load_plugins()
-    if ok:
-        logger.info('Plugin reload completed')
+    logger = logging.getLogger('postomaat')
+    if controller:
+        if controller.threadpool is None and controller.procpool is None:
+            logger.error("""No process/threadpool -> This is not the main process!
+                          \nNo changes will be applied...!\nSend SIGHUP to the main process!
+                          \nCurrent controller object : %s, %s""" % (id(controller),controller.__repr__()))
+            return
     else:
-        logger.error('Plugin reload failed')
-    
-    controller.propagate_plugin_defaults()
-    
-    controller.reload()
+        logger.error("No controller -> This is not the main process!\n"
+                     "No changes will be applied...!\nSend SIGHUP to the main process!")
+        return
 
-def sighup(signum,frame):
+    if controller.logProcessFacQueue is None:
+        logger.error("No log process in controller -> This is not the main process!\n"
+                     "No changes will be applied...!\nSend SIGHUP to the main process!")
+        return
+
+    assert controller.logConfigFileUpdates is not None
+    assert controller.configFileUpdates is not None
+
+    configFileUpdates    = getConfigFileUpdatesDict(theconfigfile,dconfdir)
+    logConfigFileUpdates = getLogConfigFileUpdatesDict(theloggingfile)
+
+    logger.info('Number of messages in logging queue: %u'%controller.logQueue.qsize())
+
+    logger.info("Log config has changes: %s" % str(logConfigFileUpdates != controller.logConfigFileUpdates))
+    logger.info("Main config has changes: %s" % str(configFileUpdates != controller.configFileUpdates))
+
+    if logConfigFileUpdates != controller.logConfigFileUpdates:
+        # save back log config file dict for later use
+        controller.logConfigFileUpdates = logConfigFileUpdates
+
+        logger.info("Create new log process with new configuration")
+        logProcessFacQueue = controller.logProcessFacQueue
+        newLogConfigure = postomaat.logtools.logConfig(logConfigFile=theloggingfile)
+        logProcessFacQueue.put(newLogConfigure)
+
+
+    if configFileUpdates != controller.configFileUpdates:
+        logger.info('Reloading configuration')
+
+        # save back config file dict for later use
+        controller.configFileUpdates = configFileUpdates
+        newconfig = ConfigParser.RawConfigParser()
+        with open(theconfigfile) as fp:
+            newconfig.readfp(fp)
+
+        # Setup address compliance checker
+        try:
+            address_check = newconfig.get('main','address_compliance_checker')
+        except Exception as e:
+            # might happen for some tests which do not propagate defaults
+            address_check = "Default"
+        Addrcheck().set(address_check)
+
+        identifier = "no identifier given"
+        if newconfig.has_option('main', 'identifier'):
+            identifier = newconfig.get('main', 'identifier')
+
+        # load conf.d
+        if os.path.isdir(dconfdir):
+            filelist = os.listdir(dconfdir)
+            configfiles = [
+                dconfdir + '/' + c for c in filelist if c.endswith('.conf')]
+            logger.debug('Conffiles in %s: %s' % (dconfdir, configfiles))
+            readfiles = newconfig.read(configfiles)
+            logger.debug('Read additional files: %s' % (readfiles))
+
+        logger.info('Reload config complete. Current configuration:%s' %
+                    identifier)
+        controller.config = newconfig
+        controller.propagate_core_defaults()
+
+        logger.info('Reloading plugins...')
+        ok = controller.load_plugins()
+        if ok:
+            logger.info('Plugin reload completed')
+        else:
+            logger.error('Plugin reload failed')
+
+        controller.propagate_plugin_defaults()
+
+        controller.reload()
+
+
+def sighup(signum, frame):
     """handle sighup to reload config"""
     reloadconfig()
 
+def getConfigFileUpdatesDict(configfilename,dconfigFileDir):
+    configfiles = [configfilename]
+    # load conf.d
+    if dconfigFileDir and os.path.isdir(dconfigFileDir):
+        filelist = os.listdir(dconfigFileDir)
+        configfiles.extend([dconfigFileDir + '/' + c for c in filelist if c.endswith('.conf')])
+
+    hashlist = createMD5(configfiles)
+    configFileUpdates = dict(zip(configfiles, hashlist))
+    return configFileUpdates
+
+def getLogConfigFileUpdatesDict(logConfFile):
+    logConfigFileUpdates = {}
+    logConfigFileUpdates[logConfFile] = createMD5([logConfFile])[0]
+    return logConfigFileUpdates
+
+
+def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
+    for block in bytesiter:
+        hasher.update(block)
+    return (hasher.hexdigest() if ashexstr else hasher.digest())
+
+def file_as_blockiter(afile, blocksize=65536):
+    with afile:
+        block = afile.read(blocksize)
+        while len(block) > 0:
+            yield block
+            block = afile.read(blocksize)
+
+
+def createMD5(fnamelst):
+    return [(fname, hash_bytestr_iter(file_as_blockiter(open(fname, 'rb')), hashlib.md5()))
+        for fname in fnamelst]
+
+lint = False
+debugmsg = False
+console = False
 
 defaultattrs={
     #Postfix version 2.1 and later:
@@ -165,24 +259,24 @@ if opts.attrs:
 
 config=ConfigParser.ConfigParser()
 if not os.path.exists(theconfigfile):
-    print("""Configfile (%s) not found. Please create it by renaming the .dist file and modifying it to your needs"""%theconfigfile)
+    print("""Configfile (%s) not found. Please create it by renaming the .dist file and modifying it to your needs""" % theconfigfile)
     sys.exit(1)
 with open(theconfigfile) as fp:
-    readconfig=config.readfp(fp)
-#load conf.d
-if dconfdir is not None and os.path.isdir(dconfdir):
-    filelist=os.listdir(dconfdir)
-    configfiles=[dconfdir+'/'+c for c in filelist if c.endswith('.conf')]
-    readfiles=config.read(configfiles)
+    readconfig = config.readfp(fp)
+# load conf.d
+if dconfdir and os.path.isdir(dconfdir):
+    filelist = os.listdir(dconfdir)
+    configfiles = [dconfdir + '/' + c for c in filelist if c.endswith('.conf')]
+    readfiles = config.read(configfiles)
 
 
-daemon=DaemonStuff(thepidfile)
+daemon = DaemonStuff(thepidfile)
 #we could have an empty config file
 if  not (lint or debugmsg or console or opts.foreground):
     if config.has_option('main', 'daemonize'):
         if config.getboolean('main', 'daemonize'):
             daemon.createDaemon()
-    else: #option not specified -> default to run daemon
+    else: # option not specified -> default to run daemon
         daemon.createDaemon()
 
 # drop privileges
@@ -195,6 +289,10 @@ except Exception:
 
 daemon.drop_privs(running_user, running_group)
 
+# all threads/processes write to the logQueue which
+# will be handled by a separate process
+logQueue   = multiprocessing.Queue(-1)
+logFactoryQueue = multiprocessing.Queue(-1)
 
         
 if lint or debugmsg:
@@ -216,7 +314,7 @@ else:
 #--
 # start process handling logging queue
 #--
-logProcessFactory = multiprocessing.Process(target=fuglu.logtools.logFactoryProcess,
+logProcessFactory = multiprocessing.Process(target=postomaat.logtools.logFactoryProcess,
                                      args=(logFactoryQueue,logQueue))
 logProcessFactory.start()
 
@@ -225,48 +323,63 @@ logFactoryQueue.put(logConfigure)
 
 # setup this main thread to send messages to the log queue 
 # (which is handled by the logger process created by the logProcessFactory)
-fuglu.logtools.client_configurer(logQueue)
+postomaat.logtools.client_configurer(logQueue)
 
 #===                      ===#
 #= Now logging is available =#
 #===                      ===#
-baselogger=logging.getLogger('')
+baselogger = logging.getLogger()
 baselogger.info("postomaat version %s starting up"%POSTOMAAT_VERSION)
 
-controller=MainController(config)
-controller.propagate_core_defaults()
-
-# all threads/processes write to the logQueue which
-# will be handled by a separate process
-logQueue   = multiprocessing.Queue(-1)
-logFactoryQueue = multiprocessing.Queue(-1)
-
-if lint:
-    controller.lint()
-elif debugmsg:    
-    attrs=defaultattrs.copy()
-    
-    for arg in defaultattrs.keys():
-        if getattr(opts,arg) is not None:
-            attrs[arg]=getattr(opts,arg)
-    print(attrs)
-    action,arg=controller.test(attrs,port=opts.debugmsgport)
-    if arg is None:
-        arg=""
-    print("Result: %s %s"%(action.upper(),arg))
-else:
-    signal.signal(signal.SIGHUP, sighup)
-    if console:
-        controller.debugconsole = True
-    controller.startup()
-
-#---
-# stop logger factory & process
-#---
-baselogger.info("Stop logging framework -> Goodbye")
+#--
+# start try-except-finally statement to make sure logging the logging
+# process is stopped correctly if an exception happens
+#--
 try:
-    baselogger.debug("Send Poison pill to logFactoryQueue")
-    logFactoryQueue.put_nowait(None)
-    logProcessFactory.join(120)
+    # Setup address compliance checker
+    try:
+        address_check = config.get('main','address_compliance_checker')
+    except Exception as e:
+        # might happen for some tests which do not propagate defaults
+        address_check = "Default"
+    Addrcheck().set(address_check)
+
+    # instantiate the MainController and load default configuration
+    controller = MainController(config,logQueue,logFactoryQueue)
+    controller.configFileUpdates = getConfigFileUpdatesDict(theconfigfile,dconfdir)
+    controller.logConfigFileUpdates = getLogConfigFileUpdatesDict(theloggingfile)
+    controller.propagate_core_defaults()
+
+
+    if lint:
+        controller.lint()
+    elif debugmsg:
+        attrs=defaultattrs.copy()
+
+        for arg in defaultattrs.keys():
+            if getattr(opts,arg) is not None:
+                attrs[arg]=getattr(opts,arg)
+        print(attrs)
+        action,arg=controller.test(attrs,port=opts.debugmsgport)
+        if arg is None:
+            arg=""
+        print("Result: %s %s"%(action.upper(),arg))
+    else:
+        signal.signal(signal.SIGHUP, sighup)
+        if console:
+            controller.debugconsole = True
+        controller.startup()
 except Exception as e:
-    logProcessFactory.terminate()
+    baselogger.error("Exception catched: %s"%(str(e)))
+    #baselogger.exception(e)
+finally:
+    #---
+    # stop logger factory & process
+    #---
+    baselogger.info("Stop logging framework -> Goodbye")
+    try:
+        baselogger.debug("Send Poison pill to logFactoryQueue")
+        logFactoryQueue.put_nowait(None)
+        logProcessFactory.join(120)
+    except Exception as e:
+        logProcessFactory.terminate()
