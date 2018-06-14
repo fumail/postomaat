@@ -33,11 +33,11 @@ class SessionHandler(object):
         self.config = config
         self.plugins = plugins
         self.workerthread = None
-
+    
     def set_threadinfo(self, status):
         if self.workerthread is not None:
             self.workerthread.threadinfo = status
-
+    
     def handlesession(self, workerthread=None):
         self.workerthread = workerthread
         sess = None
@@ -49,7 +49,7 @@ class SessionHandler(object):
                 self.logger.error('incoming request did not finish')
                 sess.closeconn()
 
-            values = sess. values
+            values = sess.values
             suspect = Suspect(values)
 
             # store incoming port to tag, could be used to disable plugins

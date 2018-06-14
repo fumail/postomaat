@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-#   Copyright 2009-2018 Oli Schacher #
+#   Copyright 2009-2018 Oli Schacher
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -67,13 +67,13 @@ class ProcManager(object):
     def _send_poison_pills(self):
         """flood the queue with poison pills to tell all workers to shut down"""
         for _ in range(len(self.workers)):
+            # tasks queue is FIFO queue. As long as nothing is added to the queue
+            # anymore the poison pills will be the last elements taken from the queue
             self.tasks.put_nowait(None)
 
     def add_task(self, session):
-        self.logger.debug("Add new task for grab...")
         if self._stayalive:
             self.tasks.put(session)
-        self.logger.debug("After adding new task for grab...")
 
     def _create_worker(self):
         self._child_id_counter +=1
@@ -188,17 +188,18 @@ def postomaat_process_worker(queue, config, shared_state,child_to_server_message
     try:
         while True:
             workerstate.workerstate = 'waiting for task'
-            logger.debug("Child process state: "+workerstate.workerstate)
-
-            # get task
-            # Note: The task is a compressed socket
+            logger.debug("%s: Child process waiting for task" % logtools.createPIDinfo())
             task = queue.get()
-
-            logger.debug("Child process state: -> got a new task")
             if task is None: # poison pill
-                logger.debug("Child process received poison pill - shut down")
-                workerstate.workerstate = 'ended'
-                return
+                logger.debug("%s: Child process received poison pill - shut down" % logtools.createPIDinfo())
+                try:
+                    # it might be possible it does not work to properly set the workerstate
+                    # since this is a shared variable -> prevent exceptions
+                    workerstate.workerstate = 'ended'
+                except Exception as e:
+                    pass
+                finally:
+                    return
             workerstate.workerstate = 'starting scan session'
 
             # recreate socket

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: UTF-8 -*-
 #   Copyright 2009-2018 Oli Schacher
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,7 @@ import os
 import pwd
 import grp
 import atexit
+import logging
 
 
 class DaemonStuff(object):
@@ -27,6 +28,7 @@ class DaemonStuff(object):
 
     def __init__(self, pidfilename):
         self.pidfile = pidfilename
+        self.logger = logger = logging.getLogger("daemon")
 
 
     def delpid(self):
@@ -87,7 +89,13 @@ class DaemonStuff(object):
         atexit.register(self.delpid)
         pid = str(os.getpid())
         pidfd = os.open(self.pidfile, os.O_WRONLY | os.O_CREAT, 0o644)
-        os.write(pidfd, ("%s\n" % pid).encode())  # important: encode the string into a byte stream for python 3
+        try:
+            os.write(pidfd, ("%s\n" % pid).encode("utf-8","strict"))  # important: encode the string into a byte stream for python 3
+        except Exception as e:
+            from inspect import currentframe, getframeinfo
+            frameinfo = getframeinfo(currentframe())
+            self.logger.error("%s:%s %s" % (frameinfo.filename, frameinfo.lineno,str(e)))
+            raise e
         os.close(pidfd)
         return 0
 
@@ -111,6 +119,11 @@ class DaemonStuff(object):
         """Drop privileges of the current process to specified unprivileged user and group. If keep_supplemental_groups is True,
         the process will also be associated with all groups the unprivileged user belongs to.
         """
+        
+        if pwd.getpwuid(os.getuid()).pw_name == username and grp.getgrgid(os.getgid()).gr_name == groupname:
+            self.logger.debug('not dropping privileges - no user and group change needed')
+            return
+        
         try:
             running_uid = pwd.getpwnam(username).pw_uid
             running_gid = grp.getgrnam(groupname).gr_gid
@@ -119,13 +132,6 @@ class DaemonStuff(object):
                 username, groupname))
         new_umask = 0o077
         os.umask(new_umask)
-
-        # UID currently running process
-        current_uid = os.getuid()
-        if (current_uid == running_uid):
-            # if current user is equal the target user
-            # don't change privileges (typically for debugging)
-            return
 
         os.setgid(running_gid)
         if keep_supplemental_groups:
