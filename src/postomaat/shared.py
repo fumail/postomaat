@@ -194,19 +194,15 @@ class Suspect(object):
         # basic mail address compliance check
         # -> nothing more than necessary for our internal assumptions
         #--
-        sender     = self.from_address
-        recipients = self.to_address
+        sender    = self.from_address
+        recipient = self.to_address
 
-        # backwards compatibility, recipients can be a single address
-        if not isinstance(recipients, list):
-            recipients = [recipients, ]
 
         # basic email validitiy check - nothing more than necessary for our internal assumptions
-        for rec in recipients:
-            if rec is None:
-                raise ValueError("Recipient address can not be None")
-            if not Addrcheck().valid(rec):
-                raise ValueError("Invalid recipient address: %s"%rec)
+        if recipient is None:
+            raise ValueError("Recipient address can not be None")
+        if not Addrcheck().valid(recipient):
+            raise ValueError("Invalid recipient address: %s"%recipient)
 
         if sender is not None and sender != '' and not Addrcheck().valid(sender):
             raise ValueError("invalid sender address: %s"%sender)
