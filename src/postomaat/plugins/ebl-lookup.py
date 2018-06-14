@@ -82,7 +82,7 @@ class EBLLookup(ScannerPlugin):
 
     
     def _is_whitelisted(self, from_domain):
-        whitelist_file = self.config.get(self.section,'whitelist_file','').strip()
+        whitelist_file = self.config.get(self.section,'whitelist_file').strip()
         if whitelist_file == '':
             return False
         
@@ -144,7 +144,7 @@ class EBLLookup(ScannerPlugin):
     def _create_hash(self, value):
         hashtype = self.config.get(self.section,'hash').lower()
         if hashtype == 'sha1':
-            myhash = sha1(value).hexdigest()
+            myhash = sha1(value.encode('utf-8')).hexdigest()
         elif hashtype == 'md5':
             myhash = md5(value).hexdigest()
         else:
@@ -157,8 +157,8 @@ class EBLLookup(ScannerPlugin):
         listed = False
         message = None
         
-        dnszone = self.config.get(self.section,'dnszone','').strip()
-        response = self.config.get(self.section,'response','').strip()
+        dnszone = self.config.get(self.section,'dnszone').strip()
+        response = self.config.get(self.section,'response').strip()
         query = '%s.%s' % (addr_hash, dnszone)
         result = lookup(query)
         if result is not None:
