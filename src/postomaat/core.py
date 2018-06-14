@@ -197,8 +197,10 @@ class MainController(object):
         backend = self.config.get('performance','backend')
         if backend == 'process':
             self.procpool = self._start_processpool()
-        else: # default backend is 'thread'
+        elif backend == 'thread':
             self.threadpool = self._start_threadpool()
+        else:
+            raise ValueError("Input \"%s\" not allowed for backend, valid options are \"thread\" and \"process\""%backend)
 
         ports=self.config.get('main', 'incomingport')
         for portconfig in ports.split():
