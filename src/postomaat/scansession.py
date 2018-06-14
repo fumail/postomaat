@@ -155,19 +155,12 @@ class PolicydSession(object):
         self.closeconn()
 
     def closeconn(self):
-        if sys.version_info > (3,):
-            # IMPORTANT: Python 3
-            #            Shutdown the socket explicitly
-            #            before closing, otherwise the next
-            #            incoming connection in PolicyServer
-            #            might time-out in the socket.accept()
-            #            statement
-            #            -> seems to create problems for python 2.7.9
-            #               whereas it works with 2.7.5 where both versions
-            #               seem to work
-            #            -> decision: use only for python > 3
+        try:
             self.socket.shutdown(socket.SHUT_RDWR)
-        self.socket.close()
+        except (OSError, socket.error):
+            pass
+        finally:
+            self.socket.close()
 
     def getrequest(self):
         """return true if mail got in, false on error Session will be kept open"""
