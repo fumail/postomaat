@@ -93,7 +93,7 @@ class LazyLocalPart(Addrcheckint):
     def __init__(self):
         super(LazyLocalPart, self).__init__()
     def __call__(self,mailAddress):
-        leg = ( mailAddress !='' and  ( re.match(r"[\x00-\x7f]+@[^@]+$", mailAddress) ))
+        leg = ( mailAddress !='' and  ( re.match(r"^[\x00-\x7f]+@[^@]+$", mailAddress) ))
         # here, the address received does not contain quotes. quoted local parts can
         # contain more characters than unquoted according.
         if not leg:
