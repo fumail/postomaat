@@ -499,7 +499,7 @@ class MainController(object):
         return allOK
 
     def load_extensions(self):
-        """load fuglu extensions"""
+        """load extensions"""
         ret = []
         import postomaat.extensions
         for extension in postomaat.extensions.__all__:

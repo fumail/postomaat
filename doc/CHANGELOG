@@ -4,6 +4,9 @@
  * Many backported features and bugfixes from Fuglu, such as
   * Multiprocessing
   * Python 3 support
+  * Runtime reload depending on config/logfile changes
+  * Multiple plugin directories support
+  * Address validity check
  * Many new plugins, such as
   * Generic Black/Whitelist based on SpamAssassin userprefs database
   * Call-Ahead (recipient verification)

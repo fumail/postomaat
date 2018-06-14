@@ -30,7 +30,7 @@ class Addrcheck(object):
         Args:
             name (String): String with name of validator
         """
-        logger = logging.getLogger("fuglu.Addrcheck")
+        logger = logging.getLogger("%s.Addrcheck"%__package__)
         if name == "Default":
             logger.warning("Set default address checker method")
             self._method = Default()
@@ -78,7 +78,17 @@ class Default(Addrcheckint):
 
 class LazyLocalPart(Addrcheckint):
     """
-    Allows '@' in local part (unfortunately, if quoted can not be checked...)
+    Allows '@' in local part.
+
+    Note:
+    In fuglu the original envelope address is received. For the policy daemon protocol the
+    address is not quoted anymore. If there are quotes around the local part it is removed
+    by Postfix before passed to Postomaat.
+    Knowing:
+    - there is only one mail address in the string
+    - address has been RFC compliant because it was received by Postomaat
+    So to make LazyLocalPart consistent with fuglu's version there's no need to check
+    distinguis a quoted and an unquoted localpart.
     """
     def __init__(self):
         super(LazyLocalPart, self).__init__()
