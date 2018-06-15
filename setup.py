@@ -7,7 +7,7 @@ import os
 
 #store old content of version file here
 #if we have git available, temporarily overwrite the file
-#so we can report the git commit id in fuglu --version 
+#so we can report the git commit id in postomaat --version
 OLD_VERSFILE_CONTENT=None
 VERSFILE='src/postomaat/__init__.py'
 

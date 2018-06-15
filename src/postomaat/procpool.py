@@ -14,21 +14,20 @@
 #
 #
 #
-import core
-import logtools
-from scansession import SessionHandler
-from stats import Statskeeper, StatDelta
-
+from __future__ import print_function
+import postomaat.logtools as logtools
+from postomaat.addrcheck import Addrcheck
 import multiprocessing
 import multiprocessing.queues
-import signal
+
+from postomaat.scansession import SessionHandler
+import postomaat.core
 import logging
 import traceback
-import importlib
-import pickle
+from postomaat.stats import Statskeeper, StatDelta
 import threading
-
-
+import pickle
+import signal
 
 class ProcManager(object):
     def __init__(self, logQueue, numprocs = None, queuesize=100, config = None):
@@ -79,8 +78,8 @@ class ProcManager(object):
     def _create_worker(self):
         self._child_id_counter +=1
         worker_name = "Worker-%s"%self._child_id_counter
-        worker = multiprocessing.Process(target=fuglu_process_worker, name=worker_name,
-                                         args=(self.tasks, self.config, self.shared_state, self.child_to_server_messages, self._logQueue))
+        self.logger.debug("Creating worker: "+worker_name)
+        worker = multiprocessing.Process(target=postomaat_process_worker, name=worker_name, args=(self.tasks, self.config, self.shared_state, self.child_to_server_messages,self._logQueue))
         return worker
 
     def start(self):
@@ -159,41 +158,32 @@ class MessageListener(threading.Thread):
                     print(traceback.format_exc())
 
 
-def fuglu_process_unpack(pickledTask):
-    pickled_socket, handler_modulename, handler_classname = pickledTask
-    sock = pickle.loads(pickled_socket)
-    return sock,handler_modulename,handler_classname
-
-def fuglu_process_worker(queue, config, shared_state,child_to_server_messages, logQueue):
+def postomaat_process_worker(queue, config, shared_state,child_to_server_messages,logQueue):
 
     signal.signal(signal.SIGHUP, signal.SIG_IGN)
-
-    logtools.client_configurer(logQueue)
     logging.basicConfig(level=logging.DEBUG)
     workerstate = WorkerStateWrapper(shared_state,'loading configuration')
-    logger = logging.getLogger('fuglu.process')
-    logger.debug("New worker: %s" % logtools.createPIDinfo())
+    logger = logging.getLogger('postomaat.process')
+
+    # Setup address compliance checker
+    # -> Due to default linux forking behavior this should already
+    #    have the correct setup but it's better not to rely on this
+    try:
+        address_check = config.get('main','address_compliance_checker')
+    except Exception as e:
+        # might happen for some tests which do not propagate defaults
+        address_check = "Default"
+    Addrcheck().set(address_check)
 
     # load config and plugins
-    controller = core.MainController(config,logQueue)
-    controller.load_extensions()
+    controller = postomaat.core.MainController(config,logQueue)
     controller.load_plugins()
 
-    if hasattr(controller, 'prependers'):
-        prependers = controller.prependers
-    else:
-        prependers = None
     plugins = controller.plugins
-    if hasattr(controller, 'appenders'):
-        appenders = controller.appenders
-    else:
-        appenders = None
 
     # forward statistics counters to parent process
     stats = Statskeeper()
     stats.stat_listener_callback.append(lambda event: child_to_server_messages.put(event.as_message()))
-
-    logger.debug("%s: Enter service loop..." % logtools.createPIDinfo())
 
     try:
         while True:
@@ -211,11 +201,10 @@ def fuglu_process_worker(queue, config, shared_state,child_to_server_messages, l
                 finally:
                     return
             workerstate.workerstate = 'starting scan session'
-            logger.debug("%s: Child process starting scan session" % logtools.createPIDinfo())
-            sock, handler_modulename, handler_classname = fuglu_process_unpack(task)
-            handler_class = getattr(importlib.import_module(handler_modulename), handler_classname)
-            handler_instance = handler_class(sock, config)
-            handler = SessionHandler(handler_instance, config,prependers, plugins, appenders)
+
+            # recreate socket
+            sock = pickle.loads(task)
+            handler = SessionHandler(sock, config, plugins)
             handler.handlesession(workerstate)
     except KeyboardInterrupt:
         workerstate.workerstate = 'ended'

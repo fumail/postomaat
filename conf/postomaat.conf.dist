@@ -28,6 +28,15 @@ incomingport=9998
 #write mrtg statistics
 mrtgdir=
 
+# Method to check mail address validity (Default/LazyLocalPart)
+address_compliance_checker = Default
+
+# Action to perform if address validity check fails (defer/reject/discard)
+address_compliance_fail_action = defer
+
+# Reply message if address validity check fails
+address_compliance_fail_message = invalid send or receive address
+
 [performance]
 
 #minimum scanner threads

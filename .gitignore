@@ -38,3 +38,6 @@ MANIFEST
 
 # C tags file
 tags
+
+# virtual python environment
+venv

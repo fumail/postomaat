@@ -9,6 +9,7 @@ Description=postomaat policy daemon
 Type=forking
 PIDFile=/run/postomaat.pid
 ExecStart=/usr/bin/postomaat --pidfile=/run/postomaat.pid
+ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target

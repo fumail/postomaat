@@ -86,7 +86,7 @@ class logConfig(object):
     """
     Conig class to easily distinguish logging configuration for lint and production (from file)
     """
-    def __init__(self,lint=False,logConfigFile="none"):
+    def __init__(self,lint=False,logConfigFile="none",lintlevel=None):
         """
         Setup in lint mode of using a config file
         Args:
@@ -97,7 +97,7 @@ class logConfig(object):
         assert not (lint and logConfigFile != "none")
 
         self._configFile = logConfigFile
-        self._lintOutputLevel = logging.ERROR
+        self._lintOutputLevel = lintlevel if lintlevel is not None else logging.ERROR
 
         self._lint = lint
 
