@@ -32,10 +32,10 @@ class Addrcheck(object):
         """
         logger = logging.getLogger("%s.Addrcheck"%__package__)
         if name == "Default":
-            logger.warning("Set default address checker method")
+            logger.info("Set default address checker method")
             self._method = Default()
         elif name == "LazyLocalPart":
-            logger.warning("Set LazyLocalPart address checker method")
+            logger.info("Set LazyLocalPart address checker method")
             self._method = LazyLocalPart()
         else:
             logger.warning("Mail address check \"%s\" not valid, using default..."%name)
