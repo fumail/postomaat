@@ -1,0 +1,14 @@
+#copy this to /lib/systemd/system/postomaat.service
+#systemctl enable postomaat
+#systemctl start postomaat
+
+[Unit]
+Description=postomaat policy server
+
+[Service]
+Type=forking
+PIDFile=/run/postomaat.pid
+ExecStart=/usr/local/bin/postomaat --pidfile=/run/postomaat.pid
+
+[Install]
+WantedBy=multi-user.target
