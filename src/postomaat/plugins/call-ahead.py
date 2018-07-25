@@ -22,7 +22,7 @@ import sys
 if __name__ =='__main__':
     sys.path.append('../../')
 
-from postomaat.shared import ScannerPlugin, DUNNO, REJECT, strip_address, extract_domain, get_config, string_to_actioncode
+from postomaat.shared import ScannerPlugin, DUNNO, REJECT, DEFER, strip_address, extract_domain, get_config, string_to_actioncode
 from postomaat.extensions.sql import SQL_EXTENSION_ENABLED,get_session
 from postomaat.extensions.dnsquery import DNSQUERY_EXTENSION_ENABLED, lookup, mxlookup
 import smtplib
@@ -96,6 +96,168 @@ class AddressCheck(ScannerPlugin):
                 'default': 1,
                 'description': """how long should expired negative cache data be kept in the table history [days] (sql only)"""
 
+            },
+            
+            'enabled': {
+                'section': 'ca_default',
+                'default': True,
+                'description': 'enable recipient verification',
+            },
+            
+            'timeout': {
+                'section': 'ca_default',
+                'default': 30,
+                'description': 'socket timeout',
+            },
+            
+            'test_server_interval': {
+                'section': 'ca_default',
+                'default': 3600,
+                'description': "how long should we blacklist a server if it doesn't support recipient verification [seconds]",
+            },
+            
+            'positive_cache_time': {
+                'section': 'ca_default',
+                'default': 604800,
+                'description': 'how long should we cache existing addresses [seconds]',
+            },
+            
+            'negative_cache_time': {
+                'section': 'ca_default',
+                'default': 14400,
+                'description': 'how long should we keep negative cache entries [seconds]',
+            },
+            
+            'server': {
+                'section': 'ca_default',
+                'default': 'mx:${domain}',
+                'description': 'how should we retrieve the next hop?',
+            },
+            
+            'sender': {
+                'section': 'ca_default',
+                'default': '${bounce}',
+                'description': '${bounce}',
+            },
+            
+            'use_tls': {
+                'section': 'ca_default',
+                'default': 1,
+                'description': 'use opportunistic TLS if supported by server. set to False to disable tls',
+            },
+            
+            'accept_on_temperr': {
+                'section': 'ca_default',
+                'default': 1,
+                'description': 'accept mail on temporary error (400) of target server.',
+            },
+            
+            'no_valid_server_fail_action': {
+                'section': 'ca_default',
+                'default': 'DUNNO',
+                'description': "action if we don't find a server to ask",
+            },
+            
+            'no_valid_server_fail_interval': {
+                'section': 'ca_default',
+                'default': 3600,
+                'description': "how long should we blacklist a recipient domain if we don't find a server to ask [seconds]",
+            },
+            
+            'no_valid_server_fail_message': {
+                'section': 'ca_default',
+                'default': '',
+                'description': "message if we don't find a server to ask",
+            },
+            
+            'resolve_fail_action': {
+                'section': 'ca_default',
+                'default': 'DUNNO',
+                'description': "action if we can't resolve target server hostname",
+            },
+            
+            'resolve_fail_interval': {
+                'section': 'ca_default',
+                'default': 3600,
+                'description': "how long should we blacklist a server if we can't resolve target server hostname [seconds]",
+            },
+            
+            'resolve_fail_message': {
+                'section': 'ca_default',
+                'default': '',
+                'description': "message if we can't resolve target server hostname",
+            },
+            
+            'connect_fail_action': {
+                'section': 'ca_default',
+                'default': 'DUNNO',
+                'description': "action if we cannot connect to the target server",
+            },
+            
+            'connect_fail_interval': {
+                'section': 'ca_default',
+                'default': 3600,
+                'description': "how long should we blacklist a server if we cannot connect to the target server [seconds]",
+            },
+            
+            'connect_fail_message': {
+                'section': 'ca_default',
+                'default': '',
+                'description': "message if we cannot connect to the target server",
+            },
+            
+            'helo_fail_action': {
+                'section': 'ca_default',
+                'default': 'DUNNO',
+                'description': "action if the target server does not accept our HELO",
+            },
+            
+            'helo_fail_interval': {
+                'section': 'ca_default',
+                'default': 3600,
+                'description': "how long should we blacklist a server if the target server does not accept our HELO [seconds]",
+            },
+            
+            'helo_fail_message': {
+                'section': 'ca_default',
+                'default': '',
+                'description': "message if the target server does not accept our HELO",
+            },
+            
+            'mail_from_fail_action': {
+                'section': 'ca_default',
+                'default': 'DUNNO',
+                'description': "action if the target server does not accept our from address",
+            },
+            
+            'mail_from_fail_interval': {
+                'section': 'ca_default',
+                'default': 3600,
+                'description': "how long should we blacklist a server if the target server does not accept our from address [seconds]",
+            },
+            
+            'mail_from_fail_message': {
+                'section': 'ca_default',
+                'default': '',
+                'description': "message if the target server does not accept our from address",
+            },
+            
+            'rcpt_to_fail_action': {
+                'section': 'ca_default',
+                'default': 'DUNNO',
+                'description': "action if the target server show unexpected behaviour on presenting the recipient address",
+            },
+            
+            'rcpt_to_fail_interval': {
+                'section': 'ca_default',
+                'default': 3600,
+                'description': "how long should we blacklist a server if the target server show unexpected behaviour on presenting the recipient address [seconds]",
+            },
+            
+            'rcpt_to_fail_message': {
+                'section': 'ca_default',
+                'default': '',
+                'description': "message if the target server show unexpected behaviour on presenting the recipient address",
             },
                              
         }
@@ -295,7 +457,11 @@ class AddressCheck(ScannerPlugin):
             if addrstate==SMTPTestResult.ADDRESS_TEMPFAIL:
                 self.logger.info('Server %s for domain %s: blacklisting for %s seconds (tempfail: %s)'%(relay,domain,servercachetime,msg))
                 self.cache.blacklist(domain, relay, servercachetime, result.stage, 'tempfail: %s'%msg)
-                return DUNNO,None
+                accept_on_temperr = test.get_domain_config(domain, 'accept_on_temperr', domainconfig)
+                if accept_on_temperr:
+                    return DUNNO, None
+                else:
+                    return DEFER, msg
             
             if addrstate==SMTPTestResult.ADDRESS_DOES_NOT_EXIST:
                 positive=False
@@ -448,7 +614,7 @@ class SMTPTest(object):
         """Determine the relay(s) for a domain"""
         serverconfig=self.get_domain_config(domain, 'server', domainconfig,{'domain':domain})
 
-        (tp,val)=serverconfig.split(':',1)
+        tp,val=serverconfig.split(':',1)
         
         if tp=='sql':
             conn=get_session(self.config.get('AddressCheck','dbconnection'))
@@ -523,14 +689,14 @@ class SMTPTest(object):
                         code,msg=smtp.ehlo()
                         if code<200 or code>299:
                             result.state=SMTPTestResult.TEST_FAILED
-                            result.errormessage="EHLO after STARTTLS was not accepted: %s"%msg
+                            result.errormessage="EHLO after STARTTLS was not accepted: %s" % msg
                             return result
                     else:
                         self.logger.info('relay %s did not accept starttls: %s %s' % (relay, code, msg))
                 else:
                     self.logger.info('relay %s does not support starttls: %s %s' % (relay, code, msg))
             else:
-                self.logger.info('relay %s does not support esmtp, falling back' % (relay))
+                self.logger.info('relay %s does not support esmtp, falling back' % relay)
                 code,msg=smtp.helo()
                 if code < 200 or code > 299:
                     result.state = SMTPTestResult.TEST_FAILED
@@ -580,7 +746,7 @@ class SMTPTest(object):
         
         try:
             smtp.quit()
-        except Exception as e:
+        except Exception:
             pass
         return result   
 
@@ -662,7 +828,7 @@ class MySQLCache(CallAheadCacheInterface):
                 'check_stage':failstage,
                 'reason':reason,
                 }
-        res=conn.execute(statement,values)
+        conn.execute(statement,values)
         conn.remove()
             
     def is_blacklisted(self,domain,relay):
@@ -736,9 +902,9 @@ class MySQLCache(CallAheadCacheInterface):
             return
         
         posstatement=""
-        if positive==True:
+        if positive is True:
             posstatement="and positive=1"
-        if positive==False:
+        if positive is False:
             posstatement="and positive=0"
         
         statement="""DELETE FROM ca_addresscache WHERE domain=:domain %s"""%posstatement
@@ -1010,7 +1176,7 @@ class MySQLConfigBackend(ConfigBackendInterface):
             res=conn.execute("SELECT confvalue FROM ca_configoverride WHERE domain=:domain and confkey=:confkey",{'domain':domain,'confkey':key})
             sc=res.scalar()
             conn.remove()
-        except Exception as e:
+        except Exception:
             self.logger.error('Could not connect to config SQL database')
         return sc
     
@@ -1022,7 +1188,7 @@ class MySQLConfigBackend(ConfigBackendInterface):
             for row in res:
                 retval[row[0]]=row[1]
             conn.remove()
-        except Exception as e:
+        except Exception:
             self.logger.error('Could not connect to config SQL database')
         return retval
 
@@ -1090,6 +1256,7 @@ class SMTPTestCommandLineInterface(object):
     
     def devshell(self):
         """Drop into a python shell for debugging"""
+        # noinspection PyUnresolvedReferences,PyCompatibility
         import readline
         import code
         logging.basicConfig(level=logging.DEBUG)

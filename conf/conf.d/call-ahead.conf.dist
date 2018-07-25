@@ -60,6 +60,10 @@ sender=${bounce}
 # use opportunistic TLS if supported by server. set to False to disable tls
 use_tls=1
 
+# accept mail on temporary error (400) of target server.
+# if disabled postomaat will return DEFER and the error message retrieved from target server
+accept_on_temperr=1
+
 ## Problem actions
 #all those values can be DUNNO, DEFER or REJECT
 
