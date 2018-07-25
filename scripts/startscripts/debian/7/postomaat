@@ -8,28 +8,29 @@
 # Short-Description: Start/stop the postomaat policy daemon
 ### END INIT INFO
 
-PID_FILE="/var/run/postomaat.pid"
+PIDFILE="/var/run/postomaat.pid"
 DAEMON="/usr/local/bin/postomaat"
 NAME="postomaat"
+OPTIONS="--pidfile=$PIDFILE"
 
 . /lib/lsb/init-functions
 
 case "$1" in
 start)
         log_daemon_msg "Starting Postomaat Policy Daemon:" "postomaat"
-        start-stop-daemon --start --pidfile $PID_FILE --exec $DAEMON
+        start-stop-daemon --start --pidfile $PIDFILE --exec $DAEMON -- $OPTIONS
         RETVAL=$?
         log_end_msg $RETVAL
         ;;
 stop)
         log_daemon_msg "Stopping Postomaat Policy Daemon:" "postomaat"
-        kill `cat $PID_FILE`
-        rm -f $PID_FILE
+        kill `cat $PIDFILE`
+        rm -f $PIDFILE
         RETVAL=$?
         log_end_msg $RETVAL
         ;;
 status)
-        status_of_proc $PID_FILE
+        status_of_proc $PIDFILE
         RETVAL=$?
         ;;
 restart)
@@ -39,7 +40,7 @@ restart)
         ;;
 reload)
         log_daemon_msg "Reloading postomaat config:" "postomaat"
-        kill -HUP `cat $PID_FILE`
+        kill -HUP `cat $PIDFILE`
         RETVAL=$?
         log_end_msg $RETVAL
         ;;
