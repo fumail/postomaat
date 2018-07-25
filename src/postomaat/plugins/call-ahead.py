@@ -87,44 +87,44 @@ class AddressCheck(ScannerPlugin):
             },
                            
             'keep_positive_history_time':{
-                'default': 30,
+                'default': '30',
                 'description': """how long should expired positive cache data be kept in the table history [days] (sql only)"""
 
             },
                            
             'keep_negative_history_time':{
-                'default': 1,
+                'default': '1',
                 'description': """how long should expired negative cache data be kept in the table history [days] (sql only)"""
 
             },
             
             'enabled': {
                 'section': 'ca_default',
-                'default': True,
+                'default': '1',
                 'description': 'enable recipient verification',
             },
             
             'timeout': {
                 'section': 'ca_default',
-                'default': 30,
+                'default': '30',
                 'description': 'socket timeout',
             },
             
             'test_server_interval': {
                 'section': 'ca_default',
-                'default': 3600,
+                'default': '3600',
                 'description': "how long should we blacklist a server if it doesn't support recipient verification [seconds]",
             },
             
             'positive_cache_time': {
                 'section': 'ca_default',
-                'default': 604800,
+                'default': '604800',
                 'description': 'how long should we cache existing addresses [seconds]',
             },
             
             'negative_cache_time': {
                 'section': 'ca_default',
-                'default': 14400,
+                'default': '14400',
                 'description': 'how long should we keep negative cache entries [seconds]',
             },
             
@@ -142,13 +142,13 @@ class AddressCheck(ScannerPlugin):
             
             'use_tls': {
                 'section': 'ca_default',
-                'default': 1,
+                'default': '1',
                 'description': 'use opportunistic TLS if supported by server. set to False to disable tls',
             },
             
             'accept_on_temperr': {
                 'section': 'ca_default',
-                'default': 1,
+                'default': '1',
                 'description': 'accept mail on temporary error (400) of target server.',
             },
             
@@ -160,7 +160,7 @@ class AddressCheck(ScannerPlugin):
             
             'no_valid_server_fail_interval': {
                 'section': 'ca_default',
-                'default': 3600,
+                'default': '3600',
                 'description': "how long should we blacklist a recipient domain if we don't find a server to ask [seconds]",
             },
             
@@ -178,7 +178,7 @@ class AddressCheck(ScannerPlugin):
             
             'resolve_fail_interval': {
                 'section': 'ca_default',
-                'default': 3600,
+                'default': '3600',
                 'description': "how long should we blacklist a server if we can't resolve target server hostname [seconds]",
             },
             
@@ -196,7 +196,7 @@ class AddressCheck(ScannerPlugin):
             
             'connect_fail_interval': {
                 'section': 'ca_default',
-                'default': 3600,
+                'default': '3600',
                 'description': "how long should we blacklist a server if we cannot connect to the target server [seconds]",
             },
             
@@ -214,7 +214,7 @@ class AddressCheck(ScannerPlugin):
             
             'helo_fail_interval': {
                 'section': 'ca_default',
-                'default': 3600,
+                'default': '3600',
                 'description': "how long should we blacklist a server if the target server does not accept our HELO [seconds]",
             },
             
@@ -232,7 +232,7 @@ class AddressCheck(ScannerPlugin):
             
             'mail_from_fail_interval': {
                 'section': 'ca_default',
-                'default': 3600,
+                'default': '3600',
                 'description': "how long should we blacklist a server if the target server does not accept our from address [seconds]",
             },
             
@@ -250,7 +250,7 @@ class AddressCheck(ScannerPlugin):
             
             'rcpt_to_fail_interval': {
                 'section': 'ca_default',
-                'default': 3600,
+                'default': '3600',
                 'description': "how long should we blacklist a server if the target server show unexpected behaviour on presenting the recipient address [seconds]",
             },
             
