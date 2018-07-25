@@ -375,9 +375,9 @@ class AddressCheck(ScannerPlugin):
         
         #enabled?
         test=SMTPTest(self.config)
-        servercachetime = test.get_domain_config(domain, 'test_server_interval', domainconfig)
+        servercachetime = int(test.get_domain_config(domain, 'test_server_interval', domainconfig))
 
-        enabled=int(test.get_domain_config(domain, 'enabled', domainconfig))
+        enabled=bool(int(test.get_domain_config(domain, 'enabled', domainconfig)))
         if not enabled:
             self.logger.info('%s: call-aheads for domain %s are disabled'%(address,domain))
             return DUNNO,None
@@ -451,21 +451,20 @@ class AddressCheck(ScannerPlugin):
         if recverificationsupport:
             addrstate,code,msg=result.rcptoreplies[address]
             positive=True
-            cachetime=test.get_domain_config(domain, 'positive_cache_time', domainconfig)
+            cachetime=int(test.get_domain_config(domain, 'positive_cache_time', domainconfig))
             
             #handle case where testadress got 5xx , but actual address got 4xx
             if addrstate==SMTPTestResult.ADDRESS_TEMPFAIL:
                 self.logger.info('Server %s for domain %s: blacklisting for %s seconds (tempfail: %s)'%(relay,domain,servercachetime,msg))
                 self.cache.blacklist(domain, relay, servercachetime, result.stage, 'tempfail: %s'%msg)
-                accept_on_temperr = test.get_domain_config(domain, 'accept_on_temperr', domainconfig)
-                if accept_on_temperr:
+                if bool(int(test.get_domain_config(domain, 'accept_on_temperr', domainconfig))):
                     return DUNNO, None
                 else:
                     return DEFER, msg
             
             if addrstate==SMTPTestResult.ADDRESS_DOES_NOT_EXIST:
                 positive=False
-                cachetime=test.get_domain_config(domain, 'negative_cache_time', domainconfig)
+                cachetime=int(test.get_domain_config(domain, 'negative_cache_time', domainconfig))
             
             self.cache.put_address(address,cachetime,positive,msg)
             neg=""
@@ -1335,7 +1334,7 @@ class SMTPTestCommandLineInterface(object):
                 timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
             except (ValueError, TypeError):
                 timeout = 10
-            use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
+            use_tls = bool(int(test.get_domain_config(domain, 'use_tls', domainconfig)))
         except IOError as e:
             print(str(e))
             timeout = 10
@@ -1389,7 +1388,7 @@ class SMTPTestCommandLineInterface(object):
                 timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
             except (ValueError, TypeError):
                 timeout = 10
-            use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
+            use_tls = bool(int(test.get_domain_config(domain, 'use_tls', domainconfig)))
             result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout, use_tls=use_tls)
             if result.state!=SMTPTestResult.TEST_OK:
                 print("There was a problem testing this server:")
@@ -1469,7 +1468,7 @@ class SMTPTestCommandLineInterface(object):
         config=get_config()
         self._init_cache(config)
         rowcount = self.cache.wipe_domain(domain,pos)
-        print("Wiped %s %s records"%(rowcount,strpos)       )
+        print("Wiped %s %s records"%(rowcount,strpos))
     
     
     
@@ -1548,10 +1547,10 @@ class SMTPTestCommandLineInterface(object):
             timeout = float(test.get_domain_config(domain, 'timeout', domainconfig))
         except (ValueError, TypeError):
             timeout = 10
-        use_tls = int(test.get_domain_config(domain, 'use_tls', domainconfig))
+        use_tls = bool(int(test.get_domain_config(domain, 'use_tls', domainconfig)))
         result=test.smtptest(relay,[address,testaddress],mailfrom=sender, timeout=timeout, use_tls=use_tls)
         
-        servercachetime=test.get_domain_config(domain, 'test_server_interval', domainconfig)
+        servercachetime=int(test.get_domain_config(domain, 'test_server_interval', domainconfig))
         if result.state!=SMTPTestResult.TEST_OK:
             print("There was a problem testing this server:")
             print(result)
@@ -1577,11 +1576,12 @@ class SMTPTestCommandLineInterface(object):
                 self.cache.unblacklist(domain)
             
             addrstate,code,msg=result.rcptoreplies[address]
-            positive=True
-            cachetime=test.get_domain_config(domain, 'positive_cache_time', domainconfig)
             if addrstate==SMTPTestResult.ADDRESS_DOES_NOT_EXIST:
                 positive=False
-                cachetime=test.get_domain_config(domain, 'negative_cache_time', domainconfig)
+                cachetime=int(test.get_domain_config(domain, 'negative_cache_time', domainconfig))
+            else:
+                positive = True
+                cachetime = int(test.get_domain_config(domain, 'positive_cache_time', domainconfig))
             
             self.cache.put_address(address,cachetime,positive,msg)
             neg=""
