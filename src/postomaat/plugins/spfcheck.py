@@ -81,6 +81,19 @@ class SPFPlugin(ScannerPlugin):
             }
         }
         
+        if HAVE_NETADDR:
+            self.private_nets = [
+                IPNetwork('10.0.0.0/8'), # private network
+                IPNetwork('127.0.0.0/8'), # localhost
+                IPNetwork('169.254.0.0/16'), # link local
+                IPNetwork('172.16.0.0/12'), # private network
+                IPNetwork('192.168.0.0/16'), # private network
+                IPNetwork('fe80::/10'), # ipv6 link local
+                IPNetwork('::1/128'), # localhost
+            ]
+        else:
+            self.private_nets = None
+        
         self.ip_whitelist_loader=None
         self.ip_whitelist=[] # either a list of plain ip adress strings or a list of IPNetwork if netaddr is available
 
@@ -111,13 +124,22 @@ class SPFPlugin(ScannerPlugin):
 
 
     def is_private_address(self,addr):
-        if addr=='127.0.0.1' or addr=='::1' or addr.startswith('10.') or addr.startswith('192.168.') or addr.startswith('fe80:'):
-            return True
-        if not addr.startswith('172.'):
-            return False
-        for i in range(16,32):
-            if addr.startswith('172.%s'%i):
+        if HAVE_NETADDR:
+            ipaddr = IPAddress(addr)
+            private = False
+            for net in self.private_nets:
+                if ipaddr in net:
+                    private = True
+                    break
+            return private
+        else:
+            if addr=='127.0.0.1' or addr=='::1' or addr.startswith('10.') or addr.startswith('192.168.') or addr.startswith('fe80:'):
                 return True
+            if not addr.startswith('172.'):
+                return False
+            for i in range(16,32):
+                if addr.startswith('172.%s'%i):
+                    return True
         return False
 
 
