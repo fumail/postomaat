@@ -17,7 +17,7 @@
 case "$1" in
   start)
         echo -n "Starting Postomaat Policy Daemon: "
-        daemon /usr/bin/postomaat
+        daemon /usr/bin/postomaat --pidfile=/var/run/postomaatd.pid
         RETVAL=$?
         echo
         ;;
