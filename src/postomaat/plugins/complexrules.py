@@ -23,12 +23,15 @@
 #IDEA: pseudo field "senderdomain"
 #IDEA: operator "blacklistlookup"
 
-from postomaat.shared import ScannerPlugin,DUNNO,REJECT,DEFER,DEFER_IF_REJECT,DEFER_IF_PERMIT,OK,DISCARD,FILTER,HOLD,PREPEND,REDIRECT,WARN
+from postomaat.shared import ScannerPlugin, FileList, \
+    DUNNO, REJECT, DEFER, DEFER_IF_REJECT, DEFER_IF_PERMIT, \
+    OK, DISCARD, FILTER,HOLD, PREPEND, REDIRECT, WARN
 
 PYPARSING_AVAILABLE=False
 try:
     # requires pyparsing >= 2
-    from pyparsing import Optional, infixNotation, opAssoc, Keyword, Word, alphas,oneOf,nums,alphas,Literal,restOfLine,ParseException,QuotedString
+    from pyparsing import Optional, infixNotation, opAssoc, Keyword, Word, alphas, \
+        oneOf, nums, alphas, Literal, restOfLine, ParseException, QuotedString
     PYPARSING_AVAILABLE=True
 except ImportError:
     pass
@@ -47,7 +50,13 @@ import time
 import string
 
 #allowed keywords at start of line
-postfixfields = ["smtpd_access_policy" , "protocol_state" , "protocol_name" , "helo_name",  "queue_id" , "sender" ,  "recipient" , "recipient_count" , "client_address" , "client_name" , "reverse_client_name" , "instance"  , "sasl_method" , "sasl_username" , "sasl_sender" , "size" , "ccert_subject" , "ccert_fingerprint" , "encryption_protocol" , "encryption_cipher" , "encryption_keysize" , "etrn_domain" , "stress" , "ccert_pubkey_fingerprint"]
+postfixfields = [
+    "smtpd_access_policy" , "protocol_state" , "protocol_name" , "helo_name",  "queue_id" , "sender" ,
+    "recipient" , "recipient_count" , "client_address" , "client_name" , "reverse_client_name" ,
+    "instance"  , "sasl_method" , "sasl_username" , "sasl_sender" , "size" , "ccert_subject" ,
+    "ccert_fingerprint" , "encryption_protocol" , "encryption_cipher" , "encryption_keysize" ,
+    "etrn_domain" , "stress" , "ccert_pubkey_fingerprint"
+]
 
 #what keywords return a integer value
 numeric=['size','encryption_keysize','recipient_count']
@@ -58,6 +67,8 @@ if PYPARSING_AVAILABLE:
     
     #allowed actions
     ACTION = oneOf(map(string.upper, [DUNNO,REJECT,DEFER,DEFER_IF_REJECT,DEFER_IF_PERMIT,OK,DISCARD,FILTER,HOLD,PREPEND,REDIRECT,WARN]))
+
+
 
 class ValueChecker(object):
 
@@ -289,49 +300,6 @@ class ComplexRuleParser(object):
         return DUNNO,''
 
 
-
-class FileReloader(object):
-    def __init__(self,filename):
-        self.filename=filename
-        self.content=[]
-        
-        self.reloadinterval=30
-        self.lastreload=0
-        self.logger=logging.getLogger('postomaat.complexfilereloader')
-        self.content=None
-        if filename is not None:
-            self.reloadifnecessary()
-        
-        
-    def reloadifnecessary(self):
-        now=time.time()
-        #check if reloadinterval has passed
-        if now-self.lastreload<self.reloadinterval:
-            return False
-        if self.filechanged():
-            self._reload()
-            return True
-        return False
-    
-    def filechanged(self):
-        if self.filename is None:
-            return False
-        statinfo=os.stat(self.filename)
-        ctime=statinfo.st_ctime
-        if ctime>self.lastreload:
-            return True
-        return False  
-
-    def _reload(self):
-        self.logger.info('Reloading rule file %s'%self.filename)
-        statinfo=os.stat(self.filename)
-        ctime=statinfo.st_ctime
-        self.lastreload=ctime
-        with open(self.filename,'r') as fp:
-            content=fp.read()
-        self.content=content
-
-
 class ComplexRules(ScannerPlugin):
     """ """
     def __init__(self,config,section=None):
@@ -344,7 +312,7 @@ class ComplexRules(ScannerPlugin):
             },
         }
         self.ruleparser=ComplexRuleParser()
-        self.filereloader=FileReloader(None)
+        self.filereloader=FileList()
         
     def examine(self,suspect):        
         if not PYPARSING_AVAILABLE:
@@ -355,7 +323,7 @@ class ComplexRules(ScannerPlugin):
             self.logger.error("Rulefile %s does not exist"%filename)
             return DUNNO,''
         self.filereloader.filename=filename
-        newcontent=self.filereloader.reloadifnecessary()
+        newcontent=self.filereloader._reload_if_necessary()
         if newcontent:
             self.ruleparser.clear_rules()
             reloadok=self.ruleparser.rules_from_string(self.filereloader.content)
@@ -387,7 +355,7 @@ class ComplexRules(ScannerPlugin):
             return False
         
         self.filereloader.filename=filename
-        newcontent=self.filereloader.reloadifnecessary()
+        newcontent=self.filereloader._reload_if_necessary()
         assert newcontent
         
         self.ruleparser.clear_rules()

@@ -15,7 +15,7 @@
 #
 #
 #
-from postomaat.shared import ScannerPlugin, strip_address, extract_domain
+from postomaat.shared import ScannerPlugin, strip_address, extract_domain, DUNNO
 from postomaat.extensions.sql import SQL_EXTENSION_ENABLED,get_session
 
 
@@ -150,7 +150,7 @@ class DBWriter(ScannerPlugin):
         except Exception as e:
             self.logger.error("DB Writer plugin failed, Log not written. : %s"%str(e))
             
-        return DUNNO,None
+        return DUNNO
 
     def __str__(self):
         return "Database Log Plugin"

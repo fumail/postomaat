@@ -25,11 +25,8 @@ Set a whitelist to accept mail from specific countries only, mail from all other
 The python pygeoip module and the GeoIP-database from MaxMind are required. 
 """
 
-from threading import Lock
-import logging
 import os
-
-from postomaat.shared import ScannerPlugin, DUNNO, REJECT, apply_template
+from postomaat.shared import ScannerPlugin, DUNNO, REJECT, apply_template, FileList
 
 LIB_GEOIP_NONE = 0
 LIB_GEOIP_PYGEOIP = 1
@@ -48,70 +45,20 @@ except ImportError:
         HAVE_GEOIP = LIB_GEOIP_NONE
 
 
-class FuFileCache(object):
-    def _reallyloadData(self, filename):
-        raise NotImplementedError()
 
+class PyGeoIPCache(FileList):
     def __init__(self, filename, **kw):
-        self.logger=logging.getLogger('postomaat.geoip.%s' % self.__class__)
-        self.filename = filename
-
-        if not hasattr(self, 'lock'):
-            self.lock=Lock()
-        if not hasattr(self,'logger'):
-            self.logger=logging.getLogger(str(self))
-        if not hasattr(self,'lastreload'):
-            self.lastreload=0
-
-        if self.filename:
-            self.reloadifnecessary(self.filename)
-        
-    
-    def reloadifnecessary(self, filename):
-        """reload geoip database if file changed"""
-        if not self.filechanged(filename):
-            return
-        if not self.lock.acquire():
-            return
-        try:
-            self._loadData(filename)
-        finally:
-            self.lock.release()
-        
-        
-    def filechanged(self, filename):
-        statinfo=os.stat(filename)
-        ctime=statinfo.st_ctime
-        self.logger.debug('Filename %s stat: ctime=%s recorded ctime=%s' % (filename, ctime, self.lastreload))
-        if ctime>self.lastreload:
-            return True
-        return False
-    
-    
-    def _loadData(self, filename):
-        """effectively loads the Data, do not call directly, only through reloadifnecessary"""
-        #set last timestamp
-        statinfo=os.stat(filename)
-        ctime=statinfo.st_ctime
-        self.lastreload=ctime
-        self._reallyloadData(filename)
-        
-        
-        
-        
-class PyGeoIPCache(FuFileCache):        
-    def __init__(self, filename, **kw):
-        FuFileCache.__init__(self, filename, **kw)
+        FileList.__init__(self, filename, **kw)
         self.geoip = None
         
         
-    def _reallyloadData(self, filename):
-        self.geoip = pygeoip.GeoIP(filename)
-        self.logger.debug('loaded geoip database %s' % filename)
+    def _reload(self):
+        self.geoip = pygeoip.GeoIP(self.filename)
+        self.logger.debug('loaded geoip database %s' % self.filename)
         
     
     def country_code(self, ip):
-        self.reloadifnecessary(self.filename)
+        self._reload_if_necessary()
         try:
             cc = self.geoip.country_code_by_addr(ip)
         except Exception as e:
@@ -120,7 +67,7 @@ class PyGeoIPCache(FuFileCache):
         return cc
     
     def country_name(self, cc):
-        self.reloadifnecessary(self.filename)
+        self._reload_if_necessary()
         country = 'unknown'
         if cc:
             i = pygeoip.const.COUNTRY_CODES.index(cc)
@@ -130,12 +77,13 @@ class PyGeoIPCache(FuFileCache):
 
 
 class GeoIPCache(PyGeoIPCache):        
-    def _reallyloadData(self, filename):
-        self.geoip = GeoIP.open(filename, GeoIP.GEOIP_STANDARD)
+    def __reload(self):
+        self.geoip = GeoIP.open(self.filename, GeoIP.GEOIP_STANDARD)
+        self.logger.debug('loaded geoip database %s' % self.filename)
         
     
     def country_name(self, cc):
-        self.reloadifnecessary(self.filename)
+        self._reload_if_necessary()
         country = 'unknown'
         if cc:
             cc = cc.upper()
@@ -202,7 +150,7 @@ class GeoIPPlugin(ScannerPlugin):
         if not os.path.exists(database):
             return DUNNO
         self.geoip.filename = database
-        self.geoip.reloadifnecessary(database)
+        self.geoip._reload_if_necessary()
         
         client_address=suspect.get_value('client_address')
         if client_address is None:

@@ -1,3 +1,11 @@
+-- Postomaat 0.8.0-rc
+ * spfcheck: improved whitelist check if netaddr is available
+ * call-ahead: new option defer_on_temperr
+ * many bugfixes
+ * some code refactoring
+
+
+
 -- Postomaat 0.7.0, 2018-04-26
  * First official release in years and first to bring a changelog file
  * Added Apache-2.0 licence information
