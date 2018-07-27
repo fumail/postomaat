@@ -77,7 +77,7 @@ class PyGeoIPCache(FileList):
 
 
 class GeoIPCache(PyGeoIPCache):        
-    def __reload(self):
+    def _reload(self):
         self.geoip = GeoIP.open(self.filename, GeoIP.GEOIP_STANDARD)
         self.logger.debug('loaded geoip database %s' % self.filename)
         
@@ -202,6 +202,14 @@ class GeoIPPlugin(ScannerPlugin):
             lint_ok = False
         else:
             print('Using GeoIP Database in %s' % database)
+        
+        if lint_ok:
+            testip = '8.8.8.8'
+            self.geoip.filename = database
+            self.geoip._reload_if_necessary()
+            cc = self.geoip.country_code(testip)
+            cn = self.geoip.country_name(cc)
+            print('Test IP %s is located in %s (%s)' % (testip, cc, cn))
         
         if not self.checkConfig():
             print('Error checking config')
