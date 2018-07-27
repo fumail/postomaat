@@ -250,11 +250,11 @@ class ComplexRuleParser(object):
     def clear_rules(self):
         self.rules=[]
         
-    def rules_from_string(self,all_rules):
+    def rules_from_list(self,all_rules):
         if all_rules is None:
             return
         all_ok=True
-        for line in all_rules.splitlines():
+        for line in all_rules:
             line=line.strip()
             if line=='' or line.startswith('#'):
                 continue
@@ -326,7 +326,7 @@ class ComplexRules(ScannerPlugin):
         newcontent=self.filereloader._reload_if_necessary()
         if newcontent:
             self.ruleparser.clear_rules()
-            reloadok=self.ruleparser.rules_from_string(self.filereloader.content)
+            reloadok=self.ruleparser.rules_from_list(self.filereloader.content)
             numrules=len(self.ruleparser.rules)
             if reloadok:
                 okmsg="all rules ok"
@@ -359,7 +359,7 @@ class ComplexRules(ScannerPlugin):
         assert newcontent
         
         self.ruleparser.clear_rules()
-        ok= self.ruleparser.rules_from_string(self.filereloader.content)
+        ok= self.ruleparser.rules_from_list(self.filereloader.content)
         rulecount=len(self.ruleparser.rules)
         print("%s rules ok"%(rulecount))
         return ok
@@ -380,7 +380,7 @@ sender~=/^EX_.+@girlfriends.com/i && (size<100 || size>20000) REJECT say somethi
 """
     print(rules)
     
-    c.rules_from_string(rules)
+    c.rules_from_list(rules)
     print("----")
     print("%s rules loaded"%(len(c.rules)))
     print("Tests:")
