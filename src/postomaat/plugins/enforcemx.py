@@ -55,9 +55,9 @@ class RulesCache(FileList):
         FileList.__init__(self, filename, strip, skip_empty, skip_comments, lowercase, additional_filters, minimum_time_between_reloads)
              
         
-    def _reallyloadData(self, filename):
+    def _reload(self):
         regex_ip = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(/\d{1,2})?|[a-f0-9:]{3,39})$'
-        with open(filename) as fp:
+        with open(self.filename) as fp:
             lines = fp.readlines()
         for line in lines:
             line.strip()
