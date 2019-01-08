@@ -1,3 +1,0 @@
-[EnforceMX]
-datafile_mx=/etc/postomaat/conf.d/enforcemx.txt
-datafile_spf=/etc/postomaat/conf.d/fakespf.txt

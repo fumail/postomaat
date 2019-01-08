@@ -1,9 +1,0 @@
-[GeoIPPlugin]
-# location of the MaxMind GeopIP database file
-database=/data/geoip/GeoIP.dat
-# list of countries you do not want to receive mail from.
-blacklist=CN,IN,KP,KR,TW,VN,A1,A2
-# list of countries you want want to receive mail from. all other countries will be rejected. If you specify a whitelist, the blacklist will have no function.
-whitelist=
-# what to do with unknown countries? this affects local IP-addresses. Set this to DUNNO or REJECT
-on_unknown=DUNNO
